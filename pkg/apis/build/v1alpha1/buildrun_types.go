@@ -49,6 +49,10 @@ type BuildRunSpec struct {
 	// State is used for canceling a buildrun (and maybe more later on).
 	// +optional
 	State BuildRunRequestedState `json:"state,omitempty"`
+
+	// Env contains additional environment variables that should be passed to the build container
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // BuildRunRequestedState defines the buildrun state the user can provide to override whatever is the current state.

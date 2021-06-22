@@ -6,6 +6,7 @@ package resources_test
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 
 	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
+	"github.com/shipwright-io/build/pkg/env"
 	"github.com/shipwright-io/build/pkg/reconciler/buildrun/resources"
 	"github.com/shipwright-io/build/test"
 	"github.com/shipwright-io/build/test/utils"
@@ -28,8 +30,11 @@ var _ = Describe("GenerateTaskrun", func() {
 
 	var (
 		build                  *buildv1alpha1.Build
+		buildWithEnvs          *buildv1alpha1.Build
 		buildRun               *buildv1alpha1.BuildRun
+		buildRunWithEnvs       *buildv1alpha1.BuildRun
 		buildStrategy          *buildv1alpha1.BuildStrategy
+		buildStrategyWithEnvs  *buildv1alpha1.BuildStrategy
 		builderImage           *buildv1alpha1.Image
 		dockerfile, buildpacks string
 		ctl                    test.Catalog
@@ -179,6 +184,85 @@ var _ = Describe("GenerateTaskrun", func() {
 					"--label",
 					"maintainer=team@my-company.com",
 				}))
+			})
+		})
+
+		Context("when env vars are defined", func() {
+			BeforeEach(func() {
+				build, err = ctl.LoadBuildYAML([]byte(test.MinimalBuildahBuild))
+				Expect(err).To(BeNil())
+
+				buildWithEnvs, err = ctl.LoadBuildYAML([]byte(test.MinimalBuildahBuildWithEnvVars))
+				Expect(err).To(BeNil())
+
+				buildRun, err = ctl.LoadBuildRunFromBytes([]byte(test.MinimalBuildahBuildRun))
+				Expect(err).To(BeNil())
+
+				buildRunWithEnvs, err = ctl.LoadBuildRunFromBytes([]byte(test.MinimalBuildahBuildRunWithEnvVars))
+				Expect(err).To(BeNil())
+
+				buildStrategy, err = ctl.LoadBuildStrategyFromBytes([]byte(test.MinimalBuildahBuildStrategy))
+				Expect(err).To(BeNil())
+				buildStrategy.Spec.BuildSteps[0].ImagePullPolicy = "Always"
+
+				buildStrategyWithEnvs, err = ctl.LoadBuildStrategyFromBytes([]byte(test.MinimalBuildahBuildStrategyWithEnvs))
+				Expect(err).To(BeNil())
+				buildStrategy.Spec.BuildSteps[0].ImagePullPolicy = "Always"
+
+				expectedCommandOrArg = []string{
+					"bud", "--tag=$(params.shp-output-image)", fmt.Sprintf("--file=$(inputs.params.%s)", "DOCKERFILE"), "$(params.shp-source-context)",
+				}
+			})
+
+			JustBeforeEach(func() {
+				//got, err = resources.GenerateTaskSpec(config.NewDefaultConfig(), build, buildRun, buildStrategy.Spec.BuildSteps, []buildv1alpha1.Parameter{})
+				//Expect(err).To(BeNil())
+			})
+
+			It("should contain env vars specified in Build in every step", func() {
+				got, err = resources.GenerateTaskSpec(config.NewDefaultConfig(), buildWithEnvs, buildRun, buildStrategy.Spec.BuildSteps, []buildv1alpha1.Parameter{})
+				Expect(err).To(BeNil())
+
+				combinedEnvs, err := env.MergeEnvVars(buildRun.Spec.Env, buildWithEnvs.Spec.Env, true)
+				Expect(err).NotTo(HaveOccurred())
+
+				for _, step := range got.Steps {
+					Expect(len(step.Env)).To(Equal(len(combinedEnvs)))
+					Expect(reflect.DeepEqual(combinedEnvs, step.Env)).To(BeTrue())
+				}
+			})
+
+			It("should contain env vars specified in BuildRun in every step", func() {
+				got, err = resources.GenerateTaskSpec(config.NewDefaultConfig(), build, buildRunWithEnvs, buildStrategy.Spec.BuildSteps, []buildv1alpha1.Parameter{})
+				Expect(err).To(BeNil())
+
+				combinedEnvs, err := env.MergeEnvVars(buildRunWithEnvs.Spec.Env, build.Spec.Env, true)
+				Expect(err).NotTo(HaveOccurred())
+
+				for _, step := range got.Steps {
+					Expect(len(step.Env)).To(Equal(len(combinedEnvs)))
+					Expect(reflect.DeepEqual(combinedEnvs, step.Env)).To(BeTrue())
+				}
+			})
+
+			It("should override Build env vars with BuildRun env vars in every step", func() {
+				got, err = resources.GenerateTaskSpec(config.NewDefaultConfig(), buildWithEnvs, buildRunWithEnvs, buildStrategy.Spec.BuildSteps, []buildv1alpha1.Parameter{})
+				Expect(err).To(BeNil())
+
+				combinedEnvs, err := env.MergeEnvVars(buildRunWithEnvs.Spec.Env, buildWithEnvs.Spec.Env, true)
+				Expect(err).NotTo(HaveOccurred())
+
+				for _, step := range got.Steps {
+					Expect(len(step.Env)).To(Equal(len(combinedEnvs)))
+					Expect(reflect.DeepEqual(combinedEnvs, step.Env)).To(BeTrue())
+
+				}
+			})
+
+			It("should fail attempting to override an env var in a BuildStrategy", func() {
+				got, err = resources.GenerateTaskSpec(config.NewDefaultConfig(), buildWithEnvs, buildRunWithEnvs, buildStrategyWithEnvs.Spec.BuildSteps, []buildv1alpha1.Parameter{})
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(Equal("environment variable \"MY_VAR_1\" already exists in BuildStrategy \"buildah\""))
 			})
 		})
 	})

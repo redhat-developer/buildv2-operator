@@ -1234,5 +1234,59 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(resources.IsClientStatusUpdateError(err)).To(BeTrue())
 			})
 		})
+
+		Context("when environment variables are specified", func() {
+			JustBeforeEach(func() {
+
+			})
+			It("fails when the name is blank", func() {
+				buildRunSample.Spec.Env = []corev1.EnvVar{
+					{
+						Name:  "",
+						Value: "some-value",
+					},
+				}
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.SpecEnvNameCanNotBeBlank, "name for environment variable must not be blank")
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(buildRunRequest)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+
+			})
+			It("fails when the value is blank", func() {
+				buildRunSample.Spec.Env = []corev1.EnvVar{
+					{
+						Name:  "some-name",
+						Value: "",
+					},
+				}
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.SpecEnvValueCanNotBeBlank, "value for environment variable \"some-name\" must not be blank")
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(buildRunRequest)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+
+			})
+			It("succeeds when name and value are not blank", func() {
+				buildRunSample.Spec.Env = []corev1.EnvVar{
+					{
+						Name:  "some-name",
+						Value: "some-value",
+					},
+				}
+
+				statusCall := ctl.StubFunc(corev1.ConditionTrue, build.BuildReason(build.Succeeded), "all validations succeeded")
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(buildRunRequest)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+
+			})
+		})
 	})
 })
