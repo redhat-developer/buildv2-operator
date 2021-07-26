@@ -16,11 +16,14 @@ import (
 	gomegaConfig "github.com/onsi/ginkgo/config"
 	tektonClient "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
+	buildapis "github.com/shipwright-io/build/pkg/apis"
 	buildClient "github.com/shipwright-io/build/pkg/client/clientset/versioned"
 	"github.com/shipwright-io/build/pkg/ctxlog"
 	"github.com/shipwright-io/build/test"
@@ -49,12 +52,25 @@ type TestBuild struct {
 	Catalog                  test.Catalog
 	Context                  context.Context
 	BuildControllerLogBuffer *bytes.Buffer
+	Scheme                   *runtime.Scheme
 }
 
 // NewTestBuild returns an initialized instance of TestBuild
 func NewTestBuild() (*TestBuild, error) {
 	namespaceID := gomegaConfig.GinkgoConfig.ParallelNode*200 + int(atomic.AddInt32(&namespaceCounter, 1))
 	testNamespace := "test-build-" + strconv.Itoa(namespaceID)
+
+	// Scheme needed to search events by object
+	// Add additional APIs here if tests need to search events for other resource types
+	scheme := runtime.NewScheme()
+	err := corev1.AddToScheme(scheme)
+	if err != nil {
+		return nil, err
+	}
+	err = buildapis.AddToScheme(scheme)
+	if err != nil {
+		return nil, err
+	}
 
 	logBuffer := &bytes.Buffer{}
 	l := ctxlog.NewLoggerTo(logBuffer, testNamespace)
@@ -89,6 +105,7 @@ func NewTestBuild() (*TestBuild, error) {
 		PipelineClientSet:        pipelineClientSet,
 		Context:                  ctx,
 		BuildControllerLogBuffer: logBuffer,
+		Scheme:                   scheme,
 	}, nil
 }
 

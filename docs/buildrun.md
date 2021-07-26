@@ -16,6 +16,8 @@ SPDX-License-Identifier: Apache-2.0
 - [BuildRun Status](#buildrun-status)
   - [Understanding the state of a BuildRun](#understanding-the-state-of-a-BuildRun)
   - [Understanding failed BuildRuns](#understanding-failed-buildruns)
+  - [Build Snapshot](#build-snapshot)
+  - [Events](#events)
 - [Relationship with Tekton Tasks](#relationship-with-tekton-tasks)
 
 ## Overview
@@ -214,6 +216,11 @@ In addition, the `Status.Conditions` will host under the `Message` field a compa
 ### Build Snapshot
 
 For every BuildRun controller reconciliation, the `buildSpec` in the Status of the `BuildRun` is updated if an existing owned `TaskRun` is present. During this update, a `Build` resource snapshot is generated and embedded into the `status.buildSpec` path of the `BuildRun`. A `buildSpec` is just a copy of the original `Build` spec, from where the `BuildRun` executed a particular image build. The snapshot approach allows developers to see the original `Build` configuration.
+
+### Events
+
+The BuildRun controller will emit Kubernetes events when a BuildRun starts and completes.
+If the BuildRun ends in a failure, a `Warning` event is emitted; otherwise a `Normal` event is emitted.
 
 ## Relationship with Tekton Tasks
 

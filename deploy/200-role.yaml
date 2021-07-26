@@ -74,3 +74,8 @@ rules:
 - apiGroups: ['']
   resources: ['serviceaccounts']
   verbs:     ['get', 'list', 'watch', 'create', 'update', 'delete']
+
+# Allow events to be created in any namespace related to BuildRun objects
+- apiGroups: ['']
+  resources: ['events']
+  verbs:     ['create']

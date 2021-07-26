@@ -140,6 +140,15 @@ func validateBuildRunToSucceed(testBuild *utils.TestBuild, testBuildRun *buildv1
 	// Verify that the BuildSpec is still available in the status
 	Expect(testBuildRun.Status.BuildSpec).ToNot(BeNil(), "BuildSpec is not available in the status")
 
+	// Verify that a succeeded event was fired
+	events, err := testBuild.GetEventsForObject(testBuildRun.Namespace, testBuildRun)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(len(events)).To(Equal(2))
+	for _, event := range events {
+		Expect(event.Type).To(Equal("Normal"))
+		Expect(event.Reason).To(Or(Equal("Started"), Equal("Succeeded")))
+	}
+
 	Logf("Test build '%s' is completed after %v !", testBuildRun.GetName(), testBuildRun.Status.CompletionTime.Time.Sub(testBuildRun.Status.StartTime.Time))
 }
 

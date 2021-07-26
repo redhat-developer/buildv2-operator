@@ -19,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -48,6 +49,7 @@ type ReconcileBuildRun struct {
 	client                client.Client
 	scheme                *runtime.Scheme
 	setOwnerReferenceFunc setOwnerReferenceFunc
+	eventRecorder         record.EventRecorder
 }
 
 // NewReconciler returns a new reconcile.Reconciler
@@ -58,6 +60,7 @@ func NewReconciler(ctx context.Context, c *config.Config, mgr manager.Manager, o
 		client:                mgr.GetClient(),
 		scheme:                mgr.GetScheme(),
 		setOwnerReferenceFunc: ownerRef,
+		eventRecorder:         mgr.GetEventRecorderFor("buildruns"),
 	}
 }
 
@@ -126,11 +129,8 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 				// stop reconciling and mark the BuildRun as Failed
 				// we only reconcile again if the status.Update call fails
 				message := fmt.Sprintf("the Build is not registered correctly, build: %s, registered status: %s, reason: %s", build.Name, build.Status.Registered, build.Status.Reason)
-				if updateErr := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, resources.ConditionBuildRegistrationFailed); updateErr != nil {
-					return reconcile.Result{}, updateErr
-				}
-
-				return reconcile.Result{}, nil
+				updateErr := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, resources.ConditionBuildRegistrationFailed)
+				return r.handleError(buildRun, updateErr)
 			}
 
 			// Ensure the build-related labels on the BuildRun
@@ -149,6 +149,7 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 			// Set OwnerReference for Build and BuildRun only when build.shipwright.io/build-run-deletion is set "true"
 			if build.GetAnnotations()[buildv1alpha1.AnnotationBuildRunDeletion] == "true" && !resources.IsOwnedByBuild(build, buildRun.OwnerReferences) {
 				if err := r.setOwnerReferenceFunc(build, buildRun, r.scheme); err != nil {
+					// TODO - why are we setting this on the Build object instead of the BuildRun object?
 					build.Status.Reason = buildv1alpha1.SetOwnerReferenceFailed
 					build.Status.Message = fmt.Sprintf("unexpected error when trying to set the ownerreference: %v", err)
 					if err := r.client.Status().Update(ctx, build); err != nil {
@@ -184,30 +185,18 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 			// Choose a service account to use
 			svcAccount, err := resources.RetrieveServiceAccount(ctx, r.client, build, buildRun)
 			if err != nil {
-				if !resources.IsClientStatusUpdateError(err) && buildRun.Status.IsFailed(buildv1alpha1.Succeeded) {
-					return reconcile.Result{}, nil
-				}
-				// system call failure, reconcile again
-				return reconcile.Result{}, err
+				return r.handleError(buildRun, err)
 			}
 
 			strategy, err := r.getReferencedStrategy(ctx, build, buildRun)
 			if err != nil {
-				if !resources.IsClientStatusUpdateError(err) && buildRun.Status.IsFailed(buildv1alpha1.Succeeded) {
-					return reconcile.Result{}, nil
-				}
-				return reconcile.Result{}, err
+				return r.handleError(buildRun, err)
 			}
 
 			// Create the TaskRun, this needs to be the last step in this block to be idempotent
 			generatedTaskRun, err := r.createTaskRun(ctx, svcAccount, strategy, build, buildRun)
 			if err != nil {
-				if !resources.IsClientStatusUpdateError(err) && buildRun.Status.IsFailed(buildv1alpha1.Succeeded) {
-					ctxlog.Info(ctx, "taskRun generation failed", namespace, request.Namespace, name, request.Name)
-					return reconcile.Result{}, nil
-				}
-				// system call failure, reconcile again
-				return reconcile.Result{}, err
+				return r.handleError(buildRun, err)
 			}
 
 			ctxlog.Info(ctx, "creating TaskRun from BuildRun", namespace, request.Namespace, name, generatedTaskRun.GenerateName, "BuildRun", buildRun.Name)
@@ -305,6 +294,7 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 			if buildRun.Status.StartTime == nil && lastTaskRun.Status.StartTime != nil {
 				buildRun.Status.StartTime = lastTaskRun.Status.StartTime
 
+				r.recordBuildRunStarted(buildRun)
 				// Report the buildrun established duration (time between the creation of the buildrun and the start of the buildrun)
 				buildmetrics.BuildRunEstablishObserve(
 					buildRun.Status.BuildSpec.StrategyName(),
@@ -318,6 +308,7 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 			if lastTaskRun.Status.CompletionTime != nil && buildRun.Status.CompletionTime == nil {
 				buildRun.Status.CompletionTime = lastTaskRun.Status.CompletionTime
 
+				r.recordBuildRunCompleted(buildRun)
 				// buildrun completion duration (total time between the creation of the buildrun and the buildrun completion)
 				buildmetrics.BuildRunCompletionObserve(
 					buildRun.Status.BuildSpec.StrategyName(),
@@ -356,6 +347,7 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 						pod.CreationTimestamp.Time.Sub(lastTaskRun.CreationTimestamp.Time),
 					)
 				}
+
 			}
 
 			ctxlog.Info(ctx, "updating buildRun status", namespace, request.Namespace, name, request.Name)
@@ -368,6 +360,43 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 	ctxlog.Debug(ctx, "finishing reconciling request from a BuildRun or TaskRun event", namespace, request.Namespace, name, request.Name)
 
 	return reconcile.Result{}, nil
+}
+
+// handleError determines the appropriate reconciliation result for the provided error.
+// It also ensures the build success/failure event is recorded.
+func (r *ReconcileBuildRun) handleError(buildRun *buildv1alpha1.BuildRun, err error) (reconcile.Result, error) {
+	if resources.IsClientStatusUpdateError(err) {
+		return reconcile.Result{}, err
+	}
+	if !buildRun.Status.IsFailed(buildv1alpha1.Succeeded) {
+		return reconcile.Result{}, err
+	}
+	r.recordBuildRunCompleted(buildRun)
+	return reconcile.Result{}, nil
+}
+
+// recordBuildRunCompleted records the appropriate event if the provided BuildRun has completed.
+func (r *ReconcileBuildRun) recordBuildRunCompleted(buildRun *buildv1alpha1.BuildRun) {
+	if buildRun.Status.CompletionTime == nil {
+		return
+	}
+	successStatus := buildRun.Status.GetCondition(buildv1alpha1.Succeeded)
+	if successStatus == nil {
+		return
+	}
+	if successStatus.Status == corev1.ConditionTrue {
+		r.eventRecorder.Event(buildRun, "Normal", "Succeeded", "Completed with no errors")
+	}
+	if successStatus.Status == corev1.ConditionFalse {
+		r.eventRecorder.Eventf(buildRun, "Warning", "Failed", "Failure reason: %s", successStatus.Reason)
+	}
+}
+
+func (r *ReconcileBuildRun) recordBuildRunStarted(buildRun *buildv1alpha1.BuildRun) {
+	if buildRun.Status.StartTime == nil {
+		return
+	}
+	r.eventRecorder.Event(buildRun, "Normal", "Started", "")
 }
 
 // GetBuildRunObject retrieves an existing BuildRun based on a name and namespace

@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/pointer"
 	knativeapi "knative.dev/pkg/apis"
 	knativev1beta1 "knative.dev/pkg/apis/duck/v1beta1"
@@ -47,6 +48,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 		buildRunSample                                         *build.BuildRun
 		taskRunSample                                          *v1beta1.TaskRun
 		statusWriter                                           *fakes.FakeStatusWriter
+		eventRecorder                                          *record.FakeRecorder
 		taskRunName, buildRunName, buildName, strategyName, ns string
 	)
 
@@ -101,6 +103,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 		client.StatusCalls(func() crc.StatusWriter { return statusWriter })
 		manager.GetClientReturns(client)
 
+		eventRecorder = record.NewFakeRecorder(10)
+		manager.GetEventRecorderForReturns(eventRecorder)
+
 		// init the Build resource, this never change throughout this test suite
 		buildSample = ctl.DefaultBuild(buildName, strategyName, build.ClusterBuildStrategyKind)
 
@@ -139,7 +144,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				result, err := reconciler.Reconcile(taskRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))
-				Expect(client.GetCallCount()).To(Equal(2))
+				Expect(client.GetCallCount()).To(Equal(3))
 			})
 			It("does not fail when the BuildRun does not exist", func() {
 
@@ -163,7 +168,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				result, err := reconciler.Reconcile(taskRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))
-				Expect(client.GetCallCount()).To(Equal(2))
+				Expect(client.GetCallCount()).To(Equal(3))
 			})
 			It("updates the BuildRun status", func() {
 
@@ -189,7 +194,7 @@ var _ = Describe("Reconcile BuildRun", func() {
 				result, err := reconciler.Reconcile(taskRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))
-				Expect(client.GetCallCount()).To(Equal(2))
+				Expect(client.GetCallCount()).To(Equal(3))
 				Expect(client.StatusCallCount()).To(Equal(1))
 			})
 
@@ -300,6 +305,8 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(reconcile.Result{}).To(Equal(result))
 				Expect(client.GetCallCount()).To(Equal(2))
 				Expect(client.StatusCallCount()).To(Equal(1))
+				// Build started event should have been emitted
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("updates the BuildRun status with a RUNNING reason", func() {
@@ -327,6 +334,8 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(reconcile.Result{}).To(Equal(result))
 				Expect(client.GetCallCount()).To(Equal(2))
 				Expect(client.StatusCallCount()).To(Equal(1))
+				// Build started event should have been emitted
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("updates the BuildRun status with a SUCCEEDED reason", func() {
@@ -352,8 +361,13 @@ var _ = Describe("Reconcile BuildRun", func() {
 				result, err := reconciler.Reconcile(taskRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))
-				Expect(client.GetCallCount()).To(Equal(2))
+				Expect(client.GetCallCount()).To(Equal(3))
 				Expect(client.StatusCallCount()).To(Equal(1))
+
+				// Two events should be fired in this reconcile loop
+				// 1. Build started
+				// 2. Build succeeded
+				Expect(len(eventRecorder.Events)).To(Equal(2))
 			})
 
 			It("should recognize the BuildRun is canceled", func() {
@@ -447,6 +461,11 @@ var _ = Describe("Reconcile BuildRun", func() {
 				result, err := reconciler.Reconcile(taskRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(reconcile.Result{}).To(Equal(result))
+
+				// Two events should be fired in this reconcile loop
+				// 1. Build started
+				// 2. Build failed
+				Expect(len(eventRecorder.Events)).To(Equal(2))
 			})
 
 			It("does not break the reconcile when a taskrun pod initcontainers are not ready", func() {
@@ -676,6 +695,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.GetCallCount()).To(Equal(4))
 				Expect(client.StatusCallCount()).To(Equal(2))
+
+				// Updating the status to "Succeeded = false" should fire a failure event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 			It("fails on a TaskRun creation due to issues when retrieving the service account", func() {
 
@@ -738,6 +760,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(buildRunRequest)
 				// we mark the BuildRun as Failed and do not reconcile again
 				Expect(err).ToNot(HaveOccurred())
+
+				// Updating the status to "Succeeded = false" should fire a failure event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("fails on a TaskRun creation due to issues when retrieving the buildstrategy", func() {
@@ -806,6 +831,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(buildRunRequest)
 				// we mark the BuildRun as Failed and do not reconcile again
 				Expect(err).ToNot(HaveOccurred())
+
+				// Updating the status to "Succeeded  false" should fire a failure event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("fails on a TaskRun creation due to issues when retrieving the clusterbuildstrategy", func() {
@@ -873,6 +901,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.GetCallCount()).To(Equal(4))
 				Expect(client.StatusCallCount()).To(Equal(2))
+
+				// Updating the status to "Succeeded" should fire a failure event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("defaults to a namespaced strategy if strategy kind is not set", func() {
@@ -931,6 +962,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.GetCallCount()).To(Equal(5))
 				Expect(client.StatusCallCount()).To(Equal(2))
+
+				// Updating the status to "Succeeded = false" should fire an event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("fails on a TaskRun creation due to owner references errors", func() {
@@ -973,6 +1007,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(buildRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.StatusCallCount()).To(Equal(2))
+
+				// Updating the status to "Succeeded = false" should fire an event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("succeeds creating a TaskRun from a namespaced buildstrategy", func() {
@@ -1067,6 +1104,9 @@ var _ = Describe("Reconcile BuildRun", func() {
 				_, err := reconciler.Reconcile(buildRunRequest)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(client.StatusCallCount()).To(Equal(1))
+
+				// Updating the status to "Succeeded = false" should fire an event
+				Expect(len(eventRecorder.Events)).To(Equal(1))
 			})
 
 			It("delays creation if the registered status of the build is not yet set", func() {

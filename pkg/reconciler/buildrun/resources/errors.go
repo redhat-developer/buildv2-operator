@@ -21,10 +21,13 @@ func (e ClientStatusUpdateError) Error() string {
 // IsClientStatusUpdateError checks whether the given error is of type ClientStatusUpdateError or
 // in case this is a list of errors, that it contains at least one error of type ClientStatusUpdateError
 func IsClientStatusUpdateError(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	switch terr := err.(type) {
 	case *ClientStatusUpdateError, ClientStatusUpdateError:
 		return true
-
 	case Errors:
 		for _, e := range terr.errors {
 			if IsClientStatusUpdateError(e) {
@@ -32,7 +35,6 @@ func IsClientStatusUpdateError(err error) bool {
 			}
 		}
 	}
-
 	return false
 }
 

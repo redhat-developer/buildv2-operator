@@ -544,7 +544,8 @@ func (c *Catalog) TaskRunWithStatus(trName string, ns string) *v1beta1.TaskRun {
 
 // DefaultTaskRunWithStatus returns a minimal tekton TaskRun with an Status
 func (c *Catalog) DefaultTaskRunWithStatus(trName string, buildRunName string, ns string, status corev1.ConditionStatus, reason string) *v1beta1.TaskRun {
-	return &v1beta1.TaskRun{
+	now := metav1.Now()
+	taskRun := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
 			Namespace: ns,
@@ -563,11 +564,15 @@ func (c *Catalog) DefaultTaskRunWithStatus(trName string, buildRunName string, n
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				StartTime: &metav1.Time{
-					Time: time.Now(),
+					Time: now.Add(-5 * time.Minute),
 				},
 			},
 		},
 	}
+	if status == corev1.ConditionTrue || status == corev1.ConditionFalse {
+		taskRun.Status.CompletionTime = &now
+	}
+	return taskRun
 }
 
 // TaskRunWithCompletionAndStartTime provides a TaskRun object with a
@@ -606,6 +611,7 @@ func (c *Catalog) TaskRunWithCompletionAndStartTime(trName string, buildRunName 
 
 // DefaultTaskRunWithFalseStatus returns a minimal tektont TaskRun with a FALSE status
 func (c *Catalog) DefaultTaskRunWithFalseStatus(trName string, buildRunName string, ns string) *v1beta1.TaskRun {
+	now := metav1.Now()
 	return &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      trName,
@@ -626,8 +632,9 @@ func (c *Catalog) DefaultTaskRunWithFalseStatus(trName string, buildRunName stri
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				StartTime: &metav1.Time{
-					Time: time.Now(),
+					Time: now.Add(-5 * time.Minute),
 				},
+				CompletionTime: &now,
 			},
 		},
 	}
