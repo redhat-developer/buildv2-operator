@@ -10,12 +10,14 @@ SPDX-License-Identifier: Apache-2.0
 - [BuildRun Controller](#buildrun-controller)
 - [Configuring a BuildRun](#configuring-a-buildrun)
   - [Defining the BuildRef](#defining-the-buildref)
-  - [Defining paramValues](#defining-paramvalues)
+  - [Defining ParamValues](#defining-paramvalues)
   - [Defining the ServiceAccount](#defining-the-serviceaccount)
-- [Canceling a `BuildRun`](#canceling-a-buildrun)  
+- [Canceling a `BuildRun`](#canceling-a-buildrun)
 - [BuildRun Status](#buildrun-status)
-  - [Understanding the state of a BuildRun](#understanding-the-state-of-a-BuildRun)
+  - [Understanding the state of a BuildRun](#understanding-the-state-of-a-buildrun)
   - [Understanding failed BuildRuns](#understanding-failed-buildruns)
+  - [Step Results in BuildRun Status](#step-results-in-buildrun-status)
+  - [Build Snapshot](#build-snapshot)
 - [Relationship with Tekton Tasks](#relationship-with-tekton-tasks)
 
 ## Overview
@@ -212,6 +214,46 @@ _Note_: We heavily rely on the Tekton TaskRun [Conditions](https://github.com/te
 To make it easier for users to understand why did a BuildRun failed, users can infer from the `Status.FailedAt` field, the pod and container where the failure took place.
 
 In addition, the `Status.Conditions` will host under the `Message` field a compacted message containing the `kubectl` command to trigger, in order to retrieve the logs.
+
+### Step Results in BuildRun Status
+
+After the successful completion of a `BuildRun`, the `.status` field contains the results (`.status.taskResults`) emitted from the `TaskRun` steps. These results contain valuable metadata for users, like the _image digest_ or the _commit sha_ of the source code used for building.
+The results from the source step will be surfaced to the `.status.sources` and the results from 
+the [output step](https://github.com/shipwright-io/build/blob/main/docs/buildstrategies.md#system-results) 
+will be surfaced to the `.status.output` field of a `BuildRun`.
+
+Example of a `BuildRun` with surfaced results for `git` source:
+
+```yaml
+# [...]
+status:
+  buildSpec:
+    # [...]
+  output:
+    digest: sha256:07626e3c7fdd28d5328a8d6df8d29cd3da760c7f5e2070b534f9b880ed093a53
+    size: "1989004"
+  sources:
+  - git:
+      commitAuthor: xxx xxxxxx
+      commitSha: f25822b85021d02059c9ac8a211ef3804ea8fdde
+    name: default
+```
+
+Another example of a `BuildRun` with surfaced results for local source code(`bundle`) source:
+
+```yaml
+# [...]
+status:
+  buildSpec:
+    # [...]
+  output:
+    digest: sha256:07626e3c7fdd28d5328a8d6df8d29cd3da760c7f5e2070b534f9b880ed093a53
+    size: "1989004"
+  sources:
+  - bundle:
+      digest: sha256:0f5e2070b534f9b880ed093a537626e3c7fdd28d5328a8d6df8d29cd3da760c7
+    name: default
+```
 
 ### Build Snapshot
 
