@@ -1,0 +1,175 @@
+name: Dependencies test
+
+on:
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  integration:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        kubernetes:
+          - v1.17.17
+          - v1.18.19
+          - v1.19.11
+          - v1.20.7
+          - v1.21.1
+        tekton:
+          - v0.19.0
+          - v0.20.1
+          - v0.21.0
+          - v0.22.0
+          - v0.23.0
+          - v0.24.3
+          - v0.25.0
+        go-version: [1.15.x]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install Ko
+        uses: imjasonh/setup-ko@20b7695b536c640edfafdd378d96c760460f29d6
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v1
+        with:
+          version: ${{ matrix.kubernetes }}
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.1.0
+        with:
+          version: v0.11.1
+          node_image: kindest/node:${{ matrix.kubernetes }}
+          cluster_name: kind
+          wait: 120s
+      - name: Verify kind cluster
+        run: |
+          echo "# Using KinD context..."
+          kubectl config use-context "kind-kind"
+          echo "# KinD nodes:"
+          kubectl get nodes
+      - name: Install Tekton
+        env:
+          TEKTON_VERSION: ${{ matrix.tekton }}
+        run: |
+          make kind-tekton
+          kubectl -n tekton-pipelines rollout status deployment tekton-pipelines-controller --timeout=2m
+          kubectl -n tekton-pipelines rollout status deployment tekton-pipelines-webhook --timeout=2m
+      - name: Test
+        run: |
+          export GIT_CONTAINER_IMAGE="$(KO_DOCKER_REPO=kind.local ko publish ./cmd/git)"
+          make test-integration
+      - name: Listing pods in cluster
+        if: ${{ failure() }}
+        run: kubectl get pods -A
+  e2e:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        kubernetes:
+          - v1.17.17
+          - v1.18.19
+          - v1.19.11
+          - v1.20.7
+          - v1.21.1
+        tekton:
+          - v0.19.0
+          - v0.20.1
+          - v0.21.0
+          - v0.22.0
+          - v0.23.0
+          - v0.24.3
+          - v0.25.0
+        go-version: [1.15.x]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v1
+        with:
+          version: ${{ matrix.kubernetes }}
+
+      - name: Check existence of version specific config.yaml
+        id: check_kind_config_file
+        uses: andstor/file-existence-action@87d74d4732ddb824259d80c8a508c0124bf1c673
+        with:
+          files: test/kind/config_${{ matrix.kubernetes }}.yaml
+      - name: Create kind cluster
+        if: steps.check_kind_config_file.outputs.files_exists == 'true'
+        uses: helm/kind-action@v1.1.0
+        with:
+          version: v0.11.1
+          node_image: kindest/node:${{ matrix.kubernetes }}
+          cluster_name: kind
+          config: test/kind/config_${{ matrix.kubernetes }}.yaml
+          wait: 120s
+      - name: Create kind cluster
+        if: steps.check_kind_config_file.outputs.files_exists == 'false'
+        uses: helm/kind-action@v1.1.0
+        with:
+          version: v0.11.1
+          node_image: kindest/node:${{ matrix.kubernetes }}
+          cluster_name: kind
+          config: test/kind/config.yaml
+          wait: 120s
+
+      - name: Verify kind cluster
+        run: |
+          echo "# Using KinD context..."
+          kubectl config use-context "kind-kind"
+          echo "# KinD nodes:"
+          kubectl get nodes
+      - name: Install Tekton
+        env:
+          TEKTON_VERSION: ${{ matrix.tekton }}
+        run: |
+          make kind-tekton
+          kubectl -n tekton-pipelines rollout status deployment tekton-pipelines-controller --timeout=2m
+          kubectl -n tekton-pipelines rollout status deployment tekton-pipelines-webhook --timeout=2m
+      - name: Install Registry
+        run: |
+          kubectl apply -f test/data/registry.yaml
+          kubectl -n registry rollout status deployment registry --timeout=2m
+      - name: Install Ko
+        uses: imjasonh/setup-ko@20b7695b536c640edfafdd378d96c760460f29d6
+      - name: Install Shipwright Build
+        run: |
+          make install-controller-kind
+          kubectl -n shipwright-build rollout status deployment shipwright-build-controller --timeout=2m
+      - name: Test
+        run: |
+          export TEST_NAMESPACE=shipwright-build
+          export TEST_IMAGE_REPO=registry.registry.svc.cluster.local:32222/shipwright-io/build-e2e
+          make test-e2e
+      - name: Listing pods in cluster
+        if: ${{ failure() }}
+        run: kubectl get pods -A
+      - name: Build controller logs
+        if: ${{ failure() }}
+        run: |
+          echo "# Pods:"
+          kubectl -n shipwright-build get pod
+          PODS=$(kubectl -n shipwright-build get pod -o json)
+          POD_NAME=$(echo "${PODS}" | jq -r '.items[] | select(.metadata.name | startswith("shipwright-build-controller-")) | .metadata.name')
+          if [ "${POD_NAME}" != "" ]; then
+            RESTART_COUNT=$(echo "${PODS}" | jq -r ".items[] | select(.metadata.name == \"${POD_NAME}\") | .status.containerStatuses[0].restartCount")
+            if [ "${RESTART_COUNT}" != "0" ]; then
+              echo "# Previous logs:"
+              kubectl -n shipwright-build logs "${POD_NAME}" --previous || true
+            fi
+            echo "# Logs:"
+            kubectl -n shipwright-build logs "${POD_NAME}"
+          else
+            echo "# Pod is missing, there are no logs to retrieve, bailing out..."
+          fi
