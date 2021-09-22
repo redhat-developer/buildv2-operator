@@ -18,7 +18,7 @@ import (
 
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	containerreg "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -69,7 +69,7 @@ func PackAndPush(ref name.Reference, directory string, options ...remote.Option)
 // PullAndUnpack a container image layer content into a local directory. Analog
 // to the bundle.PackAndPush function, optional remote.Option can be used to
 // configure settings for the image pull, i.e. access credentials.
-func PullAndUnpack(ref name.Reference, targetPath string, options ...remote.Option) (*v1.Image, error) {
+func PullAndUnpack(ref name.Reference, targetPath string, options ...remote.Option) (*containerreg.Image, error) {
 	desc, err := remote.Get(ref, options...)
 	if err != nil {
 		return nil, err

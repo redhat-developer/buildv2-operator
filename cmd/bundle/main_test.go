@@ -17,7 +17,7 @@ import (
 	. "github.com/shipwright-io/build/cmd/bundle"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	containerreg "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
@@ -50,7 +50,7 @@ var _ = Describe("Bundle Loader", func() {
 		return string(data)
 	}
 
-	var getImage = func(tag name.Tag) v1.Image {
+	var getImage = func(tag name.Tag) containerreg.Image {
 		ref, err := name.ParseReference(tag.String())
 		Expect(err).To(BeNil())
 
@@ -63,7 +63,7 @@ var _ = Describe("Bundle Loader", func() {
 		return img
 	}
 
-	var getImageDigest = func(tag name.Tag) v1.Hash {
+	var getImageDigest = func(tag name.Tag) containerreg.Hash {
 		digest, err := getImage(tag).Digest()
 		Expect(err).To(BeNil())
 

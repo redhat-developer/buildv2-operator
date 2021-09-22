@@ -277,7 +277,7 @@ Contrary to the strategy `spec.parameters`, you can use system parameters and th
 
 ## System results
 
-You can optionally store the size and digest of the image your build strategy created to some files.
+You can optionally store the size and digest of the image your build strategy created to a set of files.
 
 | Result file                        | Description                                     |
 | ---------------------------------- | ----------------------------------------------- |

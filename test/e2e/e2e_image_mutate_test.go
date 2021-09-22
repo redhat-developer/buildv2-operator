@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	containerreg "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -114,7 +114,7 @@ func getRegistryAuthentication(
 	return authn.FromConfig(authConfig.Auths[registryName])
 }
 
-func getImage(build *buildv1alpha1.Build) v1.Image {
+func getImage(build *buildv1alpha1.Build) containerreg.Image {
 	// In the GitHub action, we are using a registry inside the cluster to
 	// push the image created by `buildRun`. The registry inside the cluster
 	// is not directly accessible from the local, so that we have mapped
@@ -135,14 +135,14 @@ func getImage(build *buildv1alpha1.Build) v1.Image {
 	return img
 }
 
-func getImageAnnotation(img v1.Image, annotation string) string {
+func getImageAnnotation(img containerreg.Image, annotation string) string {
 	manifest, err := img.Manifest()
 	Expect(err).To(BeNil())
 
 	return manifest.Annotations[annotation]
 }
 
-func getImageLabel(img v1.Image, label string) string {
+func getImageLabel(img containerreg.Image, label string) string {
 	config, err := img.ConfigFile()
 	Expect(err).To(BeNil())
 
