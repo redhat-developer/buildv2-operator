@@ -44,6 +44,20 @@ make clean && make build
 * This project uses Golang 1.16+ and controller-gen v0.5.0.
 * The controllers create/watch Tekton objects.
 
+## Building in container image
+
+The `shipwright-builder-image` container image is provided with the required tools to build the 
+`Build` project. The image can be built and used to build or run any make target using the following 
+command:
+
+```sh
+make container-image
+make container-make TARGET=ginkgo
+```
+
+* `docker` is used as the default container engine. `podman` can be used by prepending 
+`CONTAINER_IMAGE=podman` before  `make` commands.
+
 # Testing
 
 Please refer to the [testing docs](/docs/development/testing.md) for more information about our test levels.
