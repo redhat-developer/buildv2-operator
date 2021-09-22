@@ -17,8 +17,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/shipwright-io/build/pkg/bundle"
 	"github.com/spf13/pflag"
+
+	"github.com/shipwright-io/build/pkg/bundle"
 )
 
 var flagValues struct {
@@ -78,9 +79,7 @@ func Do(ctx context.Context) error {
 	}
 
 	if flagValues.imageDigest != "" {
-		if err = ioutil.WriteFile(
-			flagValues.imageDigest, []byte(digest.String()), 0644,
-		); err != nil {
+		if err = ioutil.WriteFile(flagValues.imageDigest, []byte(digest.String()), 0644); err != nil {
 			return err
 		}
 	}

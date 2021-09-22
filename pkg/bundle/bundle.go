@@ -69,11 +69,7 @@ func PackAndPush(ref name.Reference, directory string, options ...remote.Option)
 // PullAndUnpack a container image layer content into a local directory. Analog
 // to the bundle.PackAndPush function, optional remote.Option can be used to
 // configure settings for the image pull, i.e. access credentials.
-func PullAndUnpack(
-	ref name.Reference,
-	targetPath string,
-	options ...remote.Option,
-) (*v1.Image, error) {
+func PullAndUnpack(ref name.Reference, targetPath string, options ...remote.Option) (*v1.Image, error) {
 	desc, err := remote.Get(ref, options...)
 	if err != nil {
 		return nil, err

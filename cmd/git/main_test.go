@@ -332,7 +332,7 @@ var _ = Describe("Git Resource", func() {
 		})
 	})
 
-	Context("store result", func() {
+	Context("store details in result files", func() {
 		const exampleRepo = "https://github.com/shipwright-io/sample-go"
 
 		It("should store commit-sha into file specified in --result-file-commit-sha flag", func() {

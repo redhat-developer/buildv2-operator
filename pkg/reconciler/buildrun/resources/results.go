@@ -7,13 +7,14 @@ package resources
 import (
 	"fmt"
 
-	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+
+	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 type sourceResult struct {
 	defaultSource,
-	bundleSource buildv1alpha1.SourceResult
+	bundleSource build.SourceResult
 }
 
 const (
@@ -28,17 +29,13 @@ const (
 // UpdateBuildRunUsingTaskResults surface the task results
 // to the buildrun
 func UpdateBuildRunUsingTaskResults(
-	buildRun *buildv1alpha1.BuildRun,
-	lastTaskRun *v1beta1.TaskRun,
+	buildRun *build.BuildRun,
+	lastTaskRun *pipeline.TaskRun,
 ) {
 	var sources sourceResult
 
-	// Initializing source result
-	sources.defaultSource.Git = &buildv1alpha1.GitSourceResult{}
-	sources.bundleSource.Bundle = &buildv1alpha1.BundleSourceResult{}
-
 	// Initializing output result
-	buildRun.Status.Output = &buildv1alpha1.Output{}
+	buildRun.Status.Output = &build.Output{}
 
 	for _, result := range lastTaskRun.Status.TaskRunResults {
 		updateBuildRunStatus(buildRun, result, &sources)
@@ -56,20 +53,32 @@ func UpdateBuildRunUsingTaskResults(
 }
 
 func updateBuildRunStatus(
-	buildRun *buildv1alpha1.BuildRun,
-	result v1beta1.TaskRunResult,
+	buildRun *build.BuildRun,
+	result pipeline.TaskRunResult,
 	sources *sourceResult,
 ) {
 	switch result.Name {
 	case generateSourceResultName(defaultSourceName, commitSHAResult):
+		if sources.defaultSource.Git == nil {
+			sources.defaultSource.Git = &build.GitSourceResult{}
+		}
+
 		// Source name is default as `spec.source` has no name field
 		sources.defaultSource.Name = defaultSourceName
 		sources.defaultSource.Git.CommitSha = result.Value
 	case generateSourceResultName(defaultSourceName, commitAuthorResult):
+		if sources.defaultSource.Git == nil {
+			sources.defaultSource.Git = &build.GitSourceResult{}
+		}
+
 		// Source name is default as `spec.source` has no name field
 		sources.defaultSource.Name = defaultSourceName
 		sources.defaultSource.Git.CommitAuthor = result.Value
 	case generateSourceResultName(defaultSourceName, bundleImageDigestResult):
+		if sources.defaultSource.Bundle == nil {
+			sources.bundleSource.Bundle = &build.BundleSourceResult{}
+		}
+
 		// Source name is default as `spec.source` has no name field
 		sources.bundleSource.Name = defaultSourceName
 		sources.bundleSource.Bundle.Digest = result.Value

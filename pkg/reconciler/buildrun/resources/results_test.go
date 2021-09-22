@@ -8,9 +8,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
+	build "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/reconciler/buildrun/resources"
 	"github.com/shipwright-io/build/test"
+
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -19,7 +20,7 @@ var _ = Describe("TaskRun results to BuildRun", func() {
 
 	Context("when a BuildRun complete successfully", func() {
 		var (
-			br *v1alpha1.BuildRun
+			br *build.BuildRun
 			tr *pipelinev1beta1.TaskRun
 		)
 
@@ -31,13 +32,15 @@ var _ = Describe("TaskRun results to BuildRun", func() {
 		It("should surface the TaskRun results emitting from default(git) source step", func() {
 			commitSha := "0e0583421a5e4bf562ffe33f3651e16ba0c78591"
 
-			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-source-default-commit-sha",
-				Value: commitSha,
-			}, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-source-default-commit-author",
-				Value: "foo bar",
-			})
+			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults,
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-source-default-commit-sha",
+					Value: commitSha,
+				},
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-source-default-commit-author",
+					Value: "foo bar",
+				})
 
 			resources.UpdateBuildRunUsingTaskResults(br, tr)
 
@@ -49,10 +52,11 @@ var _ = Describe("TaskRun results to BuildRun", func() {
 		It("should surface the TaskRun results emitting from default(bundle) source step", func() {
 			bundleImageDigest := "sha256:fe1b73cd25ac3f11dec752755e2"
 
-			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-source-default-bundle-image-digest",
-				Value: bundleImageDigest,
-			})
+			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults,
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-source-default-bundle-image-digest",
+					Value: bundleImageDigest,
+				})
 
 			resources.UpdateBuildRunUsingTaskResults(br, tr)
 
@@ -63,13 +67,15 @@ var _ = Describe("TaskRun results to BuildRun", func() {
 		It("should surface the TaskRun results emitting from output step", func() {
 			imageDigest := "sha256:fe1b73cd25ac3f11dec752755e2"
 
-			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-image-digest",
-				Value: imageDigest,
-			}, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-image-size",
-				Value: "230",
-			})
+			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults,
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-image-digest",
+					Value: imageDigest,
+				},
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-image-size",
+					Value: "230",
+				})
 
 			resources.UpdateBuildRunUsingTaskResults(br, tr)
 
@@ -81,19 +87,23 @@ var _ = Describe("TaskRun results to BuildRun", func() {
 			commitSha := "0e0583421a5e4bf562ffe33f3651e16ba0c78591"
 			imageDigest := "sha256:fe1b73cd25ac3f11dec752755e2"
 
-			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-source-default-commit-sha",
-				Value: commitSha,
-			}, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-source-default-commit-author",
-				Value: "foo bar",
-			}, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-image-digest",
-				Value: imageDigest,
-			}, pipelinev1beta1.TaskRunResult{
-				Name:  "shp-image-size",
-				Value: "230",
-			})
+			tr.Status.TaskRunResults = append(tr.Status.TaskRunResults,
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-source-default-commit-sha",
+					Value: commitSha,
+				},
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-source-default-commit-author",
+					Value: "foo bar",
+				},
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-image-digest",
+					Value: imageDigest,
+				},
+				pipelinev1beta1.TaskRunResult{
+					Name:  "shp-image-size",
+					Value: "230",
+				})
 
 			resources.UpdateBuildRunUsingTaskResults(br, tr)
 

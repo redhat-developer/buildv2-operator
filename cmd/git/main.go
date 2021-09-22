@@ -137,9 +137,7 @@ func runGitClone(ctx context.Context) error {
 			return err
 		}
 
-		if err = ioutil.WriteFile(
-			flagValues.resultFileCommitAuthor, []byte(output), 0644,
-		); err != nil {
+		if err = ioutil.WriteFile(flagValues.resultFileCommitAuthor, []byte(output), 0644); err != nil {
 			return err
 		}
 	}

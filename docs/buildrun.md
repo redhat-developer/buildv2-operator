@@ -233,10 +233,10 @@ status:
     digest: sha256:07626e3c7fdd28d5328a8d6df8d29cd3da760c7f5e2070b534f9b880ed093a53
     size: "1989004"
   sources:
-  - git:
+  - name: default
+    git:
       commitAuthor: xxx xxxxxx
       commitSha: f25822b85021d02059c9ac8a211ef3804ea8fdde
-    name: default
 ```
 
 Another example of a `BuildRun` with surfaced results for local source code(`bundle`) source:
@@ -250,9 +250,9 @@ status:
     digest: sha256:07626e3c7fdd28d5328a8d6df8d29cd3da760c7f5e2070b534f9b880ed093a53
     size: "1989004"
   sources:
-  - bundle:
+  - name: default
+    bundle:
       digest: sha256:0f5e2070b534f9b880ed093a537626e3c7fdd28d5328a8d6df8d29cd3da760c7
-    name: default
 ```
 
 ### Build Snapshot

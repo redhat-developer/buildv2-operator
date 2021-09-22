@@ -11,13 +11,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	. "github.com/shipwright-io/build/cmd/bundle"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 var _ = Describe("Bundle Loader", func() {
@@ -35,7 +36,7 @@ var _ = Describe("Bundle Loader", func() {
 		f(path)
 	}
 
-	withTempFile := func(pattern string, f func(filename string)) {
+	var withTempFile = func(pattern string, f func(filename string)) {
 		file, err := ioutil.TempFile(os.TempDir(), pattern)
 		Expect(err).ToNot(HaveOccurred())
 		defer os.Remove(file.Name())
@@ -43,13 +44,13 @@ var _ = Describe("Bundle Loader", func() {
 		f(file.Name())
 	}
 
-	filecontent := func(path string) string {
+	var filecontent = func(path string) string {
 		data, err := ioutil.ReadFile(path)
 		Expect(err).ToNot(HaveOccurred())
 		return string(data)
 	}
 
-	getImage := func(tag name.Tag) v1.Image {
+	var getImage = func(tag name.Tag) v1.Image {
 		ref, err := name.ParseReference(tag.String())
 		Expect(err).To(BeNil())
 
@@ -62,7 +63,7 @@ var _ = Describe("Bundle Loader", func() {
 		return img
 	}
 
-	getImageDigest := func(tag name.Tag) v1.Hash {
+	var getImageDigest = func(tag name.Tag) v1.Hash {
 		digest, err := getImage(tag).Digest()
 		Expect(err).To(BeNil())
 
