@@ -158,7 +158,7 @@ func NewDefaultConfig() *Config {
 		MutateImageContainerTemplate: corev1.Container{
 			Image: mutateImageDefaultImage,
 			Command: []string{
-				"mutate-image",
+				"/ko-app/mutate-image",
 			},
 			// We explicitly define HOME=/tekton/home because this was always set in the
 			// default configuration of Tekton until v0.24.0, see https://github.com/tektoncd/pipeline/pull/3878

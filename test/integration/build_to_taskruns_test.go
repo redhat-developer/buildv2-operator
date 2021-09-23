@@ -163,7 +163,7 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 				Expect(err).To(BeNil())
 
 				Expect(tr.Spec.TaskSpec.Steps[3].Name).To(Equal("mutate-image"))
-				Expect(tr.Spec.TaskSpec.Steps[3].Command[0]).To(Equal("mutate-image"))
+				Expect(tr.Spec.TaskSpec.Steps[3].Command[0]).To(Equal("/ko-app/mutate-image"))
 				Expect(tr.Spec.TaskSpec.Steps[3].Args).To(Equal([]string{
 					"--image",
 					"$(params.shp-output-image)",
