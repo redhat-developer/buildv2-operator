@@ -147,6 +147,50 @@ func validateBuildRunToSucceed(testBuild *utils.TestBuild, testBuildRun *buildv1
 	Logf("Test build '%s' is completed after %v !", testBuildRun.GetName(), testBuildRun.Status.CompletionTime.Time.Sub(testBuildRun.Status.StartTime.Time))
 }
 
+func validateBuildRunResultsFromGitSource(testBuildRun *buildv1alpha1.BuildRun) {
+	testBuildRun, err := testBuild.GetBR(testBuildRun.Name)
+	Expect(err).ToNot(HaveOccurred())
+
+	tr, err := testBuild.GetTaskRunFromBuildRun(testBuildRun.Name)
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(len(testBuildRun.Status.Sources)).To(Equal(1))
+
+	for _, result := range tr.Status.TaskRunResults {
+		switch result.Name {
+		case "shp-source-default-commit-sha":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Sources[0].Git.CommitSha))
+		case "shp-source-default-commit-author":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Sources[0].Git.CommitAuthor))
+		case "shp-image-digest":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Output.Digest))
+		case "shp-image-size":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Output.Size))
+		}
+	}
+}
+
+func validateBuildRunResultsFromBundleSource(testBuildRun *buildv1alpha1.BuildRun) {
+	testBuildRun, err := testBuild.GetBR(testBuildRun.Name)
+	Expect(err).ToNot(HaveOccurred())
+
+	tr, err := testBuild.GetTaskRunFromBuildRun(testBuildRun.Name)
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(len(testBuildRun.Status.Sources)).To(Equal(1))
+
+	for _, result := range tr.Status.TaskRunResults {
+		switch result.Name {
+		case "shp-source-default-bundle-image-digest":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Sources[0].Bundle.Digest))
+		case "shp-image-digest":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Output.Digest))
+		case "shp-image-size":
+			Expect(result.Value).To(Equal(testBuildRun.Status.Output.Size))
+		}
+	}
+}
+
 // validateBuildRunToFail creates the build run and watches its flow until it fails.
 func validateBuildRunToFail(testBuild *utils.TestBuild, testBuildRun *buildv1alpha1.BuildRun) {
 	trueCondition := corev1.ConditionTrue

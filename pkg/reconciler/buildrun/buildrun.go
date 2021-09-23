@@ -297,6 +297,8 @@ func (r *ReconcileBuildRun) Reconcile(request reconcile.Request) (reconcile.Resu
 			return reconcile.Result{}, nil
 		}
 
+		resources.UpdateBuildRunUsingTaskResults(buildRun, lastTaskRun)
+
 		trCondition := lastTaskRun.Status.GetCondition(apis.ConditionSucceeded)
 		if trCondition != nil {
 			if err := resources.UpdateBuildRunUsingTaskRunCondition(ctx, r.client, buildRun, lastTaskRun, trCondition); err != nil {

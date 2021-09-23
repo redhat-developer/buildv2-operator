@@ -309,6 +309,45 @@ spec:
               latestTaskRunRef:
                 description: "LatestTaskRunRef is the name of the TaskRun responsible for executing this BuildRun. \n TODO: This should be called something like \"TaskRunName\""
                 type: string
+              output:
+                description: Output holds the results emitted from step definition of an output
+                properties:
+                  digest:
+                    description: Digest holds the digest of output image
+                    type: string
+                  size:
+                    description: Size holds the compressed size of output image
+                    type: string
+                type: object
+              sources:
+                description: Sources holds the results emitted from the step definition of different sources
+                items:
+                  description: SourceResult holds the results emitted from the different sources
+                  properties:
+                    bundle:
+                      description: Bundle holds the results emitted from from the step definition of bundle source
+                      properties:
+                        digest:
+                          description: Digest hold the image digest result
+                          type: string
+                      type: object
+                    git:
+                      description: Git holds the results emitted from from the step definition of a git source
+                      properties:
+                        commitAuthor:
+                          description: CommitAuthor holds the commit author of a git source
+                          type: string
+                        commitSha:
+                          description: CommitSha holds the commit sha of git source
+                          type: string
+                      type: object
+                    name:
+                      description: Name is the name of source
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
               startTime:
                 description: StartTime is the time the build is actually started.
                 format: date-time

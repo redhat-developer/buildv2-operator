@@ -277,7 +277,7 @@ Contrary to the strategy `spec.parameters`, you can use system parameters and th
 
 ## System results
 
-You can optionally store the size and digest of the image your build strategy created to some files. This information will eventually be made available in the status of the BuildRun.
+You can optionally store the size and digest of the image your build strategy created to a set of files.
 
 | Result file                        | Description                                     |
 | ---------------------------------- | ----------------------------------------------- |
@@ -285,6 +285,20 @@ You can optionally store the size and digest of the image your build strategy cr
 | `$(results.shp-image-size.path)`   | File to store the compressed size of the image. |
 
 You can look at sample build strategies, such as [Kaniko](../samples/buildstrategy/kaniko/buildstrategy_kaniko_cr.yaml), or [Buildpacks](../samples/buildstrategy/buildpacks-v3/buildstrategy_buildpacks-v3_cr.yaml), to see how they fill some or all of the results files.
+
+This information will be available in the `.status.output` field of the BuildRun.
+
+```yaml
+apiVersion: shipwright.io/v1alpha1
+kind: BuildRun
+# [...]
+status:
+ # [...]
+  output:
+    digest: sha256:07626e3c7fdd28d5328a8d6df8d29cd3da760c7f5e2070b534f9b880ed093a53
+    size: "1989004"
+  # [...]
+```
 
 ## Steps Resource Definition
 

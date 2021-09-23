@@ -24,6 +24,9 @@ func AppendGitStep(
 	taskSpec.Results = append(taskSpec.Results, tektonv1beta1.TaskResult{
 		Name:        fmt.Sprintf("%s-source-%s-commit-sha", prefixParamsResultsVolumes, name),
 		Description: "The commit SHA of the cloned source.",
+	}, tektonv1beta1.TaskResult{
+		Name:        fmt.Sprintf("%s-source-%s-commit-author", prefixParamsResultsVolumes, name),
+		Description: "The commit author of the cloned source.",
 	})
 
 	// initialize the step from the template
@@ -40,6 +43,8 @@ func AppendGitStep(
 		fmt.Sprintf("$(params.%s-%s)", prefixParamsResultsVolumes, paramSourceRoot),
 		"--result-file-commit-sha",
 		fmt.Sprintf("$(results.%s-source-%s-commit-sha.path)", prefixParamsResultsVolumes, name),
+		"--result-file-commit-author",
+		fmt.Sprintf("$(results.%s-source-%s-commit-author.path)", prefixParamsResultsVolumes, name),
 	}
 
 	// Check if a revision is defined

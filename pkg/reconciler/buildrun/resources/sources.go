@@ -20,10 +20,10 @@ func AmendTaskSpecWithSources(
 	// create the step for spec.source, either Git or Bundle
 	switch {
 	case build.Spec.Source.BundleContainer != nil:
-		sources.AppendBundleStep(cfg, taskSpec, build.Spec.Source, "default")
+		sources.AppendBundleStep(cfg, taskSpec, build.Spec.Source, defaultSourceName)
 
 	case build.Spec.Source.URL != "":
-		sources.AppendGitStep(cfg, taskSpec, build.Spec.Source, "default")
+		sources.AppendGitStep(cfg, taskSpec, build.Spec.Source, defaultSourceName)
 	}
 
 	// create the step for spec.sources, this will eventually change into different steps depending on the type of the source

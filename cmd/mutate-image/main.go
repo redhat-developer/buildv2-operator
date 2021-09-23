@@ -21,7 +21,7 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	containerreg "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/spf13/pflag"
 )
@@ -178,7 +178,7 @@ func runMutateImage(ctx context.Context) error {
 		return fmt.Errorf("mutating config: %v", err)
 	}
 
-	img = mutate.Annotations(img, annotations).(v1.Image)
+	img = mutate.Annotations(img, annotations).(containerreg.Image)
 
 	digest, err := img.Digest()
 	if err != nil {
@@ -232,7 +232,7 @@ func runMutateImage(ctx context.Context) error {
 // GetCompressedImageSize calculate the compressed size of the image.
 // By adding up the config and layer sizes we will get the
 // total compressed size of the image
-func GetCompressedImageSize(img v1.Image) (int64, error) {
+func GetCompressedImageSize(img containerreg.Image) (int64, error) {
 	manifest, err := img.Manifest()
 	if err != nil {
 		return 0, err

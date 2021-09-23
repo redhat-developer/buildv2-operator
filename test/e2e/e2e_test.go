@@ -5,6 +5,7 @@
 package e2e_test
 
 import (
+	"fmt"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -570,6 +571,58 @@ var _ = Describe("For a Kubernetes cluster with Tekton and build installed", fun
 
 				validateBuildRunToSucceed(testBuild, buildRun)
 			})
+		})
+	})
+
+	Context("when results from TaskRun surface to BuildRun", func() {
+		BeforeEach(func() {
+			testID = generateTestID("kaniko")
+		})
+
+		It("should BuildRun status field contains results from default(git) step", func() {
+			// create the build definition
+			build = createBuild(
+				testBuild,
+				testID,
+				"samples/build/build_kaniko_cr.yaml",
+			)
+
+			buildRun, err = buildRunTestData(testBuild.Namespace, testID, "samples/buildrun/buildrun_kaniko_cr.yaml")
+			Expect(err).ToNot(HaveOccurred(), "Error retrieving buildrun test data")
+
+			validateBuildRunToSucceed(testBuild, buildRun)
+			validateBuildRunResultsFromGitSource(buildRun)
+		})
+
+		It("should BuildRun status field contains results from default(bundle) step", func() {
+			inputImage := "quay.io/shipwright/source-bundle:latest"
+			outputImage := fmt.Sprintf("%s/%s:%s",
+				os.Getenv(EnvVarImageRepo),
+				testID,
+				"latest",
+			)
+
+			build, err = NewBuildPrototype().
+				ClusterBuildStrategy("kaniko").
+				Name(testID).
+				Namespace(testBuild.Namespace).
+				SourceBundle(inputImage).
+				SourceContextDir("docker-build").
+				Dockerfile("Dockerfile").
+				OutputImage(outputImage).
+				OutputImageCredentials(os.Getenv(EnvVarImageRepoSecret)).
+				Create()
+			Expect(err).ToNot(HaveOccurred())
+
+			buildRun, err = NewBuildRunPrototype().
+				Name(testID).
+				ForBuild(build).
+				GenerateServiceAccount().
+				Create()
+			Expect(err).ToNot(HaveOccurred())
+
+			validateBuildRunToSucceed(testBuild, buildRun)
+			validateBuildRunResultsFromBundleSource(buildRun)
 		})
 	})
 })

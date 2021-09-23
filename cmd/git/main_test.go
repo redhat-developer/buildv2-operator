@@ -331,4 +331,39 @@ var _ = Describe("Git Resource", func() {
 			})
 		})
 	})
+
+	Context("store details in result files", func() {
+		const exampleRepo = "https://github.com/shipwright-io/sample-go"
+
+		It("should store commit-sha into file specified in --result-file-commit-sha flag", func() {
+			withTempFile("commit-sha", func(filename string) {
+				withTempDir(func(target string) {
+					Expect(run(
+						"--url", exampleRepo,
+						"--target", target,
+						"--revision", "v0.1.0",
+						"--result-file-commit-sha", filename,
+					)).ToNot(HaveOccurred())
+
+					Expect(filecontent(filename)).To(Equal("8016b0437a7a09079f961e5003e81e5ad54e6c26"))
+				})
+			})
+		})
+
+		It("should store commit-author into file specified in --result-file-commit-author flag", func() {
+			withTempFile("commit-author", func(filename string) {
+
+				withTempDir(func(target string) {
+					Expect(run(
+						"--url", exampleRepo,
+						"--target", target,
+						"--revision", "v0.1.0",
+						"--result-file-commit-author", filename,
+					)).ToNot(HaveOccurred())
+
+					Expect(filecontent(filename)).To(Equal("Enrique Encalada"))
+				})
+			})
+		})
+	})
 })

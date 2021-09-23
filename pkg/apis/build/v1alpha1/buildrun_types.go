@@ -64,8 +64,61 @@ const (
 	BuildRunStatePodEvicted = "PodEvicted"
 )
 
+// SourceResult holds the results emitted from the different sources
+type SourceResult struct {
+	// Name is the name of source
+	Name string `json:"name"`
+
+	// Git holds the results emitted from from the
+	// step definition of a git source
+	//
+	// +optional
+	Git *GitSourceResult `json:"git,omitempty"`
+
+	// Bundle holds the results emitted from from the
+	// step definition of bundle source
+	//
+	// +optional
+	Bundle *BundleSourceResult `json:"bundle,omitempty"`
+}
+
+// BundleSourceResult holds the results emitted from the bundle source
+type BundleSourceResult struct {
+	// Digest hold the image digest result
+	Digest string `json:"digest,omitempty"`
+}
+
+// GitSourceResult holds the results emitted from the git source
+type GitSourceResult struct {
+	// CommitSha holds the commit sha of git source
+	CommitSha string `json:"commitSha,omitempty"`
+
+	// CommitAuthor holds the commit author of a git source
+	CommitAuthor string `json:"commitAuthor,omitempty"`
+}
+
+// Output holds the results emitted from the output step (build-and-push)
+type Output struct {
+	// Digest holds the digest of output image
+	Digest string `json:"digest,omitempty"`
+
+	// Size holds the compressed size of output image
+	Size string `json:"size,omitempty"`
+}
+
 // BuildRunStatus defines the observed state of BuildRun
 type BuildRunStatus struct {
+	// Sources holds the results emitted from the step definition
+	// of different sources
+	//
+	// +optional
+	Sources []SourceResult `json:"sources"`
+
+	// Output holds the results emitted from step definition of an output
+	//
+	// +optional
+	Output *Output `json:"output"`
+
 	// Conditions holds the latest available observations of a resource's current state.
 	Conditions Conditions `json:"conditions,omitempty"`
 

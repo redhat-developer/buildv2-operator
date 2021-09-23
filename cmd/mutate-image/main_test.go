@@ -14,7 +14,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+	containerreg "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	. "github.com/onsi/ginkgo"
@@ -130,7 +130,7 @@ var _ = Describe("Image Mutate Resource", func() {
 		return string(data)
 	}
 
-	getImage := func(tag name.Tag) v1.Image {
+	getImage := func(tag name.Tag) containerreg.Image {
 		auth := authn.FromConfig(authn.AuthConfig{
 			Username: os.Getenv(regUser),
 			Password: os.Getenv(regPass),
@@ -148,7 +148,7 @@ var _ = Describe("Image Mutate Resource", func() {
 		return img
 	}
 
-	getImageDigest := func(tag name.Tag) v1.Hash {
+	getImageDigest := func(tag name.Tag) containerreg.Hash {
 		digest, err := getImage(tag).Digest()
 		Expect(err).To(BeNil())
 
