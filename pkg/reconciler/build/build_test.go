@@ -477,5 +477,77 @@ var _ = Describe("Reconcile Build", func() {
 				Expect(reconcile.Result{}).To(Equal(result))
 			})
 		})
+
+		Context("when environment variables are specified", func() {
+			JustBeforeEach(func() {
+				buildSample.Spec.Source.Credentials = &corev1.LocalObjectReference{
+					Name: "existing",
+				}
+				buildSample.Spec.Output.Credentials = nil
+
+				// Fake some client Get calls and ensure we populate all
+				// different resources we could get during reconciliation
+				client.GetCalls(func(context context.Context, nn types.NamespacedName, object runtime.Object) error {
+					switch object := object.(type) {
+					case *build.Build:
+						buildSample.DeepCopyInto(object)
+					case *build.ClusterBuildStrategy:
+						clusterBuildStrategySample.DeepCopyInto(object)
+					case *corev1.Secret:
+						secretSample = ctl.SecretWithoutAnnotation("existing", namespace)
+						secretSample.DeepCopyInto(object)
+					}
+					return nil
+				})
+			})
+			It("fails when the name is blank", func() {
+				buildSample.Spec.Env = []corev1.EnvVar{
+					{
+						Name:  "",
+						Value: "some-value",
+					},
+				}
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.SpecEnvNameCanNotBeBlank, "name for environment variable must not be blank")
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+
+			})
+			It("fails when the value is blank", func() {
+				buildSample.Spec.Env = []corev1.EnvVar{
+					{
+						Name:  "some-name",
+						Value: "",
+					},
+				}
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.SpecEnvValueCanNotBeBlank, "value for environment variable \"some-name\" must not be blank")
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+
+			})
+			It("succeeds when name and value are not blank", func() {
+				buildSample.Spec.Env = []corev1.EnvVar{
+					{
+						Name:  "some-name",
+						Value: "some-value",
+					},
+				}
+
+				statusCall := ctl.StubFunc(corev1.ConditionTrue, build.BuildReason(build.Succeeded), "all validations succeeded")
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(request)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+
+			})
+		})
 	})
 })

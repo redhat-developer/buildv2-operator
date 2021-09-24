@@ -18,6 +18,7 @@ import (
 
 	buildv1alpha1 "github.com/shipwright-io/build/pkg/apis/build/v1alpha1"
 	"github.com/shipwright-io/build/pkg/config"
+	"github.com/shipwright-io/build/pkg/env"
 )
 
 const (
@@ -213,6 +214,26 @@ func GenerateTaskSpec(
 	// specified in build manifest
 	if len(build.Spec.Output.Annotations) > 0 || len(build.Spec.Output.Labels) > 0 {
 		amendTaskSpecWithImageMutate(cfg, &generatedTaskSpec, build.Spec.Output)
+	}
+
+	// Combine the environment variables specified in the Build object and the BuildRun object
+	// env vars in the BuildRun supercede those in the Build, overwriting them
+	combinedEnvs, err := env.MergeEnvVars(buildRun.Spec.Env, build.Spec.Env, true)
+	if err != nil {
+		return nil, err
+	}
+
+	for i, step := range generatedTaskSpec.Steps {
+		if step.Container.Env == nil {
+			generatedTaskSpec.Steps[i].Container.Env = []corev1.EnvVar{}
+		}
+
+		// Merge the combined env vars from the Build and BuildRun into the Containers env vars
+		// Any collision between the env vars in the Container step and those in the Build/BuildRun
+		// will result in an error and cause a failed TaskRun
+		if generatedTaskSpec.Steps[i].Container.Env, err = env.MergeEnvVars(combinedEnvs, generatedTaskSpec.Steps[i].Container.Env, false); err != nil {
+			return nil, fmt.Errorf("%s in BuildStrategy %q", err.Error(), build.Spec.StrategyName())
+		}
 	}
 
 	return &generatedTaskSpec, nil

@@ -30,6 +30,12 @@ const (
 	SpecBuilderSecretRefNotFound BuildReason = "SpecBuilderSecretRefNotFound"
 	// MultipleSecretRefNotFound indicates that multiple secrets are missing
 	MultipleSecretRefNotFound BuildReason = "MultipleSecretRefNotFound"
+	// SpecEnvNameCanNotBeBlank indicates that the name for an environment variable is blank
+	SpecEnvNameCanNotBeBlank BuildReason = "SpecEnvNameCanNotBeBlank"
+	// SpecEnvValueCanNotBeBlank indicates that the value for an environment variable is blank
+	SpecEnvValueCanNotBeBlank BuildReason = "SpecEnvValueCanNotBeBlank"
+	// RuntimePathsCanNotBeEmpty indicates that the spec.runtime feature is used but the paths were not specified
+	RuntimePathsCanNotBeEmpty BuildReason = "RuntimePathsCanNotBeEmpty"
 	// RestrictedParametersInUse indicates the definition of reserved shipwright parameters
 	RestrictedParametersInUse BuildReason = "RestrictedParametersInUse"
 	// UndefinedParameter indicates the definition of param that was not defined in the strategy parameters
@@ -107,6 +113,10 @@ type BuildSpec struct {
 	// +optional
 	// +kubebuilder:validation:Format=duration
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+
+	// Env contains additional environment variables that should be passed to the build container
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // StrategyName returns the name of the configured strategy, or 'undefined' in

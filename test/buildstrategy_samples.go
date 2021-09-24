@@ -58,6 +58,64 @@ spec:
           mountPath: /var/lib/containers/storage
 `
 
+// MinimalBuildahBuildStrategyWithEnvs defines a
+// BuildStrategy for Buildah with two steps
+// each of them with different container resources
+// and env vars
+const MinimalBuildahBuildStrategyWithEnvs = `
+apiVersion: shipwright.io/v1alpha1
+kind: BuildStrategy
+metadata:
+  name: buildah
+spec:
+  buildSteps:
+    - name: buildah-bud
+      image: quay.io/containers/buildah:v1.20.1
+      workingDir: $(params.shp-source-root)
+      securityContext:
+        privileged: true
+      command:
+        - /usr/bin/buildah
+      args:
+        - bud
+        - --tag=$(params.shp-output-image)
+        - --file=$(build.dockerfile)
+        - $(params.shp-source-context)
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+      volumeMounts:
+        - name: buildah-images
+          mountPath: /var/lib/containers/storage
+      env:
+        - name: MY_VAR_1
+          value: "my-var-1-buildstrategy-value"
+    - name: buildah-push
+      image: quay.io/containers/buildah:v1.20.1
+      securityContext:
+        privileged: true
+      command:
+        - /usr/bin/buildah
+      args:
+        - push
+        - --tls-verify=false
+        - docker://$(params.shp-output-image)
+      resources:
+        limits:
+          cpu: 100m
+          memory: 65Mi
+        requests:
+          cpu: 100m
+          memory: 65Mi
+      volumeMounts:
+        - name: buildah-images
+          mountPath: /var/lib/containers/storage
+`
+
 // BuildahBuildStrategySingleStep defines a
 // BuildStrategy for Buildah with a single step
 // and container resources

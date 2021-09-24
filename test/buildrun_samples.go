@@ -4,6 +4,23 @@
 
 package test
 
+// MinimalBuildahBuildRunWithEnvVars defines a simple
+// BuildRun with a referenced Build and env vars
+const MinimalBuildahBuildRunWithEnvVars = `
+apiVersion: shipwright.io/v1alpha1
+kind: BuildRun
+metadata:
+  name: buildah-run
+spec:
+  buildRef:
+    name: buildah
+  env:
+    - name: MY_VAR_2
+      value: "my-var-2-buildrun-value"
+    - name: MY_VAR_3
+      value: "my-var-3-buildrun-value"
+`
+
 // MinimalBuildahBuildRun defines a simple
 // BuildRun with a referenced Build
 const MinimalBuildahBuildRun = `

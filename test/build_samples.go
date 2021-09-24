@@ -4,6 +4,27 @@
 
 package test
 
+// MinimalBuildahBuildWithEnvVars defines a simple
+// Build with a source, strategy, and env vars
+const MinimalBuildahBuildWithEnvVars = `
+apiVersion: shipwright.io/v1alpha1
+kind: Build
+metadata:
+  name: buildah
+spec:
+  source:
+    url: "https://github.com/shipwright-io/sample-go"
+  strategy:
+    name: buildah
+    kind: ClusterBuildStrategy
+  dockerfile: Dockerfile
+  env:
+    - name: MY_VAR_1
+      value: "my-var-1-build-value"
+    - name: MY_VAR_2
+      value: "my-var-2-build-value"
+`
+
 // MinimalBuildahBuild defines a simple
 // Build with a source and a strategy
 const MinimalBuildahBuild = `
