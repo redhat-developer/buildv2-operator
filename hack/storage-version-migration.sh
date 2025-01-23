@@ -65,19 +65,23 @@ spec:
   ttlSecondsAfterFinished: 600
 EOF
 
-JOB_NAME=$(kubectl -n shipwright-build get job --selector app=storage-version-migration-shipwright -o jsonpath='{.items[0].metadata.name}')
 
-while [ "$(kubectl -n shipwright-build get job "${JOB_NAME}" -o json | jq -r '.status.completionTime // ""')" == "" ]; do
-    echo "[INFO] Storage version migraton job is still running"
+NAMESPACE="shipwright-build"
+JOB_NAME=$(kubectl -n "${NAMESPACE}" get job --selector app=storage-version-migration-shipwright -o jsonpath='{.items[0].metadata.name}')
+
+while true; do
+    jobStatus=$(kubectl get job "${JOB_NAME}" -n "${NAMESPACE}" -o=jsonpath='{.status.conditions[*].type}')
+
+    if [[ "${jobStatus}" == *"Complete"* ]]; then
+		echo "Job ${JOB_NAME} has completed successfully!"
+		exit 0
+    elif [[ "${jobStatus}" == *"Failed"* ]]; then
+      	echo "[ERROR] Storage version migration failed"
+		exit 1
+    fi
+
+    echo "[INFO] Storage version migration job is still running"
     sleep 10
 done
-
-isFailed="$(kubectl -n shipwright-build get job "${JOB_NAME}" -o json | jq -r '.status.conditions[] | select(.type == "Failed") | .status')"
-
-if [ "${isFailed}" == "True" ]; then
-    echo "[ERROR] Storage version migration failed"
-    kubectl -n shipwright-build logs "job/${JOB_NAME}"
-    exit 1
-fi
 
 echo "[DONE]"
