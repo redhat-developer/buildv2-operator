@@ -37,6 +37,8 @@ const (
 	Triggers = "triggers"
 	// NodeSelector for validating `spec.nodeSelector` entry
 	NodeSelector = "nodeselector"
+	// Tolerations for validating `spec.tolerations` entry
+	Tolerations = "tolerations"
 )
 
 const (
@@ -79,6 +81,8 @@ func NewValidation(
 		return &Trigger{build: build}, nil
 	case NodeSelector:
 		return &NodeSelectorRef{Build: build}, nil
+	case Tolerations:
+		return &TolerationsRef{Build: build}, nil
 	default:
 		return nil, fmt.Errorf("unknown validation type")
 	}

@@ -7,6 +7,7 @@ package resources
 import (
 	"fmt"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -235,12 +236,27 @@ func GenerateTaskRun(
 		},
 	}
 
+	taskRunPodTemplate := &pod.PodTemplate{}
 	// Merge Build and BuildRun NodeSelectors, giving preference to BuildRun NodeSelector
 	taskRunNodeSelector := mergeMaps(build.Spec.NodeSelector, buildRun.Spec.NodeSelector)
 	if len(taskRunNodeSelector) > 0 {
-		expectedTaskRun.Spec.PodTemplate = &pod.PodTemplate{
-			NodeSelector: taskRunNodeSelector,
+		taskRunPodTemplate.NodeSelector = taskRunNodeSelector
+	}
+
+	// Merge Build and BuildRun Tolerations, giving preference to BuildRun Tolerations values
+	taskRunTolerations := mergeTolerations(build.Spec.Tolerations, buildRun.Spec.Tolerations)
+	if len(taskRunTolerations) > 0 {
+		for i, toleration := range taskRunTolerations {
+			if toleration.Effect == "" {
+				// set unspecified effects to TainEffectNoSchedule, as that is the only supported effect
+				taskRunTolerations[i].Effect = corev1.TaintEffectNoSchedule
+			}
 		}
+		taskRunPodTemplate.Tolerations = taskRunTolerations
+	}
+
+	if !(taskRunPodTemplate.Equals(&pod.PodTemplate{})) {
+		expectedTaskRun.Spec.PodTemplate = taskRunPodTemplate
 	}
 
 	// assign the annotations from the build strategy, filter out those that should not be propagated
@@ -352,6 +368,21 @@ func effectiveTimeout(build *buildv1beta1.Build, buildRun *buildv1beta1.BuildRun
 	}
 
 	return nil
+}
+
+// mergeTolerations merges the values for Spec.Tolerations in the given Build and BuildRun objects, with values in the BuildRun object overriding values
+// in the Build object (if present).
+func mergeTolerations(buildTolerations []corev1.Toleration, buildRunTolerations []corev1.Toleration) []corev1.Toleration {
+	mergedTolerations := []corev1.Toleration{}
+	mergedTolerations = append(mergedTolerations, buildRunTolerations...)
+	for _, toleration := range buildTolerations {
+		if !slices.ContainsFunc(mergedTolerations, func(t corev1.Toleration) bool {
+			return t.Key == toleration.Key
+		}) {
+			mergedTolerations = append(mergedTolerations, toleration)
+		}
+	}
+	return mergedTolerations
 }
 
 // isPropagatableAnnotation filters the last-applied-configuration annotation from kubectl because this would break the meaning of this annotation on the target object;

@@ -115,6 +115,12 @@ type BuildRunSpec struct {
 	//
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// If specified, the pod's tolerations.
+	// +optional
+	// +patchMergeKey=Key
+	// +patchStrategy=merge
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty" patchStrategy:"merge" patchMergeKey:"Key"`
 }
 
 // BuildRunRequestedState defines the buildrun state the user can provide to override whatever is the current state.
