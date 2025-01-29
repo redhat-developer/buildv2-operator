@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	knativeapi "knative.dev/pkg/apis"
@@ -1635,9 +1636,23 @@ var _ = Describe("Reconcile BuildRun", func() {
 		Context("when nodeSelector is specified", func() {
 			It("fails when the nodeSelector is invalid", func() {
 				// set nodeSelector to be invalid
-				buildSample.Spec.NodeSelector = map[string]string{strings.Repeat("s", 64): "amd64"}
+				buildRunSample.Spec.NodeSelector = map[string]string{strings.Repeat("s", 64): "amd64"}
 
-				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.NodeSelectorNotValid, "must be no more than 63 characters")
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.NodeSelectorNotValid, "name part "+validation.MaxLenError(63))
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when Tolerations is specified", func() {
+			It("should fail to validate when the Toleration is invalid", func() {
+				// set Toleration to be invalid
+				buildRunSample.Spec.Tolerations = []corev1.Toleration{{Key: strings.Repeat("s", 64), Operator: "Equal", Value: "test-value"}}
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.TolerationNotValid, validation.MaxLenError(63))
 				statusWriter.UpdateCalls(statusCall)
 
 				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)

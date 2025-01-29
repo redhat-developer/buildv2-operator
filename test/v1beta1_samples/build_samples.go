@@ -565,6 +565,22 @@ spec:
     kubernetes.io/arch: amd64
 `
 
+// MinimalBuildWithToleration defines a simple
+// Build with a strategy, output, and a Toleration specified
+const MinimalBuildWithToleration = `
+apiVersion: shipwright.io/v1beta1
+kind: Build
+spec:
+  strategy:
+    kind: ClusterBuildStrategy
+  output:
+    image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
+  tolerations:
+    - key: "build-test-key"
+      operator: "Equal"
+      value: "build-test-value"
+`
+
 // BuildWithUndefinedParameter defines a param that was not declared under the
 // strategy parameters
 const BuildWithUndefinedParam = `

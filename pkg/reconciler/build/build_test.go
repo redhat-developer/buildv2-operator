@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/utils/ptr"
 	crc "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -621,7 +622,22 @@ var _ = Describe("Reconcile Build", func() {
 				buildSample.Spec.NodeSelector = map[string]string{strings.Repeat("s", 64): "amd64"}
 				buildSample.Spec.Output.PushSecret = nil
 
-				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.NodeSelectorNotValid, "name part must be no more than 63 characters")
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.NodeSelectorNotValid, "name part "+validation.MaxLenError(63))
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(context.TODO(), request)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+			})
+		})
+
+		Context("when Tolerations is specified", func() {
+			It("should fail to validate when the Toleration is invalid", func() {
+				// set Toleration to be invalid
+				buildSample.Spec.Tolerations = []corev1.Toleration{{Key: strings.Repeat("s", 64), Operator: "Equal", Value: "test-value"}}
+				buildSample.Spec.Output.PushSecret = nil
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.TolerationNotValid, "name part "+validation.MaxLenError(63))
 				statusWriter.UpdateCalls(statusCall)
 
 				_, err := reconciler.Reconcile(context.TODO(), request)
