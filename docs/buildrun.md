@@ -77,6 +77,7 @@ The `BuildRun` definition supports the following fields:
   - `spec.env` - Specifies additional environment variables that should be passed to the build container. Overrides any environment variables that are specified in the `Build` resource. The available variables depend on the tool used by the chosen build strategy.
   - `spec.nodeSelector` - Specifies a selector which must match a node's labels for the build pod to be scheduled on that node. If nodeSelectors are specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
   - `spec.tolerations` - Specifies the tolerations for the build pod. Only `key`, `value`, and `operator` are supported. Only `NoSchedule` taint `effect` is supported. If tolerations are specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
+  - `spec.schedulerName` - Specifies the scheduler name for the build pod. If schedulerName is specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
 
 **Note**: The `spec.build.name` and `spec.build.spec` are mutually exclusive. Furthermore, the overrides for `timeout`, `paramValues`, `output`, and `env` can only be combined with `spec.build.name`, but **not** with `spec.build.spec`.
 

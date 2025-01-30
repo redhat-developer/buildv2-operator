@@ -41,6 +41,7 @@ A `Build` resource allows the user to define:
 - volumes
 - nodeSelector
 - tolerations
+- schedulerName
 
 A `Build` is available within a namespace.
 
@@ -97,6 +98,7 @@ To prevent users from triggering `BuildRun`s (_execution of a Build_) that will 
 | OutputTimestampNotValid                         | The output timestamp value is not valid.                                                                                                                                                                     |
 | NodeSelectorNotValid                            | The specified nodeSelector is not valid. |
 | TolerationNotValid                              | The specified tolerations are not valid. |
+| SchedulerNameNotValid                              | The specified schedulerName is not valid. |
 
 ## Configuring a Build
 
@@ -130,6 +132,7 @@ The `Build` definition supports the following fields:
   - `spec.retention.succeededLimit` - Specifies the number of successful buildrun can exist.
   - `spec.nodeSelector` - Specifies a selector which must match a node's labels for the build pod to be scheduled on that node. If nodeSelectors are specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
   - `spec.tolerations` - Specifies the tolerations for the build pod. Only `key`, `value`, and `operator` are supported. Only `NoSchedule` taint `effect` is supported. If tolerations are specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
+  - `spec.schedulerName` - Specifies the scheduler name for the build pod. If schedulerName is specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
 
 ### Defining the Source
 
