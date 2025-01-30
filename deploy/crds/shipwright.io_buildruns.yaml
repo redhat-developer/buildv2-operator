@@ -7439,6 +7439,10 @@ spec:
                             format: duration
                             type: string
                         type: object
+                      schedulerName:
+                        description: SchedulerName specifies the scheduler to be used
+                          to dispatch the Pod
+                        type: string
                       source:
                         description: |-
                           Source refers to the location where the source code is,
@@ -9753,6 +9757,10 @@ spec:
                     format: duration
                     type: string
                 type: object
+              schedulerName:
+                description: SchedulerName specifies the scheduler to be used to dispatch
+                  the Pod
+                type: string
               serviceAccount:
                 description: |-
                   ServiceAccount refers to the kubernetes serviceaccount
@@ -11941,6 +11949,10 @@ spec:
                         format: duration
                         type: string
                     type: object
+                  schedulerName:
+                    description: SchedulerName specifies the scheduler to be used
+                      to dispatch the Pod
+                    type: string
                   source:
                     description: |-
                       Source refers to the location where the source code is,

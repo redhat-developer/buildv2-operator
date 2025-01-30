@@ -44,6 +44,7 @@ func GetBuildObject(ctx context.Context, client client.Client, buildRun *buildv1
 		// explicitly setting them here is required for validation to happen.
 		build.Spec.NodeSelector = buildRun.Spec.NodeSelector
 		build.Spec.Tolerations = buildRun.Spec.Tolerations
+		build.Spec.SchedulerName = buildRun.Spec.SchedulerName
 		return nil
 	}
 

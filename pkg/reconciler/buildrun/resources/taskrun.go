@@ -255,6 +255,15 @@ func GenerateTaskRun(
 		taskRunPodTemplate.Tolerations = taskRunTolerations
 	}
 
+	// Set custom scheduler name if specified, giving preference to BuildRun values
+	if buildRun.Spec.SchedulerName != "" {
+		taskRunPodTemplate.SchedulerName = buildRun.Spec.SchedulerName
+	} else {
+		if build.Spec.SchedulerName != "" {
+			taskRunPodTemplate.SchedulerName = build.Spec.SchedulerName
+		}
+	}
+
 	if !(taskRunPodTemplate.Equals(&pod.PodTemplate{})) {
 		expectedTaskRun.Spec.PodTemplate = taskRunPodTemplate
 	}
