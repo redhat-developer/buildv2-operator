@@ -678,5 +678,27 @@ var _ = Describe("GenerateTaskrun", func() {
 				Expect(got.Spec.PodTemplate.Tolerations[0].Value).To(Equal(buildRun.Spec.Tolerations[0].Value))
 			})
 		})
+
+		Context("when the build and buildrun both specify a SchedulerName", func() {
+			BeforeEach(func() {
+				build, err = ctl.LoadBuildYAML([]byte(test.MinimalBuildWithSchedulerName))
+				Expect(err).To(BeNil())
+
+				buildRun, err = ctl.LoadBuildRunFromBytes([]byte(test.MinimalBuildRunWithSchedulerName))
+				Expect(err).To(BeNil())
+
+				buildStrategy, err = ctl.LoadBuildStrategyFromBytes([]byte(test.ClusterBuildStrategyNoOp))
+				Expect(err).To(BeNil())
+			})
+
+			JustBeforeEach(func() {
+				got, err = resources.GenerateTaskRun(config.NewDefaultConfig(), build, buildRun, serviceAccountName, buildStrategy)
+				Expect(err).To(BeNil())
+			})
+
+			It("should give precedence to the SchedulerName value specified in the buildRun", func() {
+				Expect(got.Spec.PodTemplate.SchedulerName).To(Equal(buildRun.Spec.SchedulerName))
+			})
+		})
 	})
 })

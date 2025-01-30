@@ -292,4 +292,46 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 			})
 		})
 	})
+
+	Context("when a build with SchedulerName is defined", func() {
+		BeforeEach(func() {
+			buildSample = []byte(test.MinimalBuildWithSchedulerName)
+			buildRunSample = []byte(test.MinimalBuildRun)
+		})
+
+		Context("when the TaskRun is created", func() {
+			It("should have the SchedulerName specified in the PodTemplate", func() {
+				Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				Expect(err).To(BeNil())
+				Expect(*buildObject.Status.Message).To(Equal(v1beta1.AllValidationsSucceeded))
+				Expect(*buildObject.Status.Registered).To(Equal(corev1.ConditionTrue))
+				Expect(*buildObject.Status.Reason).To(Equal(v1beta1.SucceedStatus))
+
+				Expect(tb.CreateBR(buildRunObject)).To(BeNil())
+
+				_, err = tb.GetBRTillStartTime(buildRunObject.Name)
+				Expect(err).To(BeNil())
+
+				tr, err := tb.GetTaskRunFromBuildRun(buildRunObject.Name)
+				Expect(err).To(BeNil())
+				Expect(buildObject.Spec.SchedulerName).To(Equal(tr.Spec.PodTemplate.SchedulerName))
+			})
+		})
+
+		Context("when the SchedulerName is invalid", func() {
+			It("fails the build with a proper error in Reason", func() {
+				// set SchedulerName to be invalid
+				buildObject.Spec.SchedulerName = strings.Repeat("s", 64)
+				Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				Expect(err).To(BeNil())
+
+				Expect(*buildObject.Status.Registered).To(Equal(corev1.ConditionFalse))
+				Expect(*buildObject.Status.Reason).To(Equal(v1beta1.SchedulerNameNotValid))
+			})
+		})
+	})
 })

@@ -1660,5 +1660,19 @@ var _ = Describe("Reconcile BuildRun", func() {
 				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
 			})
 		})
+
+		Context("when SchedulerName is specified", func() {
+			It("should fail to validate when the SchedulerName is invalid", func() {
+				// set SchedulerName to be invalid
+				buildRunSample.Spec.SchedulerName = strings.Repeat("s", 64)
+
+				statusCall := ctl.StubFunc(corev1.ConditionFalse, build.SchedulerNameNotValid, validation.MaxLenError(64))
+				statusWriter.UpdateCalls(statusCall)
+
+				_, err := reconciler.Reconcile(context.TODO(), buildRunRequest)
+				Expect(err).To(BeNil())
+				Expect(statusWriter.UpdateCallCount()).To(Equal(1))
+			})
+		})
 	})
 })

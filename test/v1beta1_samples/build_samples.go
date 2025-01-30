@@ -581,6 +581,19 @@ spec:
       value: "build-test-value"
 `
 
+// MinimalBuildWithSchedulerName defines a simple
+// Build with a strategy, output, and a SchedulerName specified
+const MinimalBuildWithSchedulerName = `
+apiVersion: shipwright.io/v1beta1
+kind: Build
+spec:
+  strategy:
+    kind: ClusterBuildStrategy
+  output:
+    image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
+  schedulerName: "build-test-schedulername"
+`
+
 // BuildWithUndefinedParameter defines a param that was not declared under the
 // strategy parameters
 const BuildWithUndefinedParam = `

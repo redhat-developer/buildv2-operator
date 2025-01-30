@@ -633,4 +633,45 @@ var _ = Describe("Integration tests BuildRuns and TaskRuns", func() {
 			})
 		})
 	})
+
+	Context("when a buildrun is created with a SchedulerName defined", func() {
+		BeforeEach(func() {
+			buildSample = []byte("")
+			buildRunSample = []byte(test.BuildRunWithSchedulerName)
+		})
+
+		Context("when the taskrun is created", func() {
+			It("should have the SchedulerName specified in the PodTemplate", func() {
+				// Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				// buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				// Expect(err).To(BeNil())
+
+				Expect(tb.CreateBR(buildRunObject)).To(BeNil())
+
+				br, err := tb.GetBRTillStartTime(buildRunObject.Name)
+				Expect(err).To(BeNil())
+
+				tr, err := tb.GetTaskRunFromBuildRun(buildRunObject.Name)
+				Expect(err).To(BeNil())
+				Expect(br.Spec.SchedulerName).To(Equal(tr.Spec.PodTemplate.SchedulerName))
+			})
+		})
+
+		Context("when the SchedulerName is invalid", func() {
+			It("fails the buildrun with a proper error in Reason", func() {
+				// set SchedulerName to be invalid
+				buildRunObject.Spec.SchedulerName = strings.Repeat("s", 64)
+				Expect(tb.CreateBR(buildRunObject)).To(BeNil())
+
+				br, err := tb.GetBRTillCompletion(buildRunObject.Name)
+				Expect(err).To(BeNil())
+
+				condition := br.Status.GetCondition(v1beta1.Succeeded)
+				Expect(condition.Status).To(Equal(corev1.ConditionFalse))
+				Expect(condition.Reason).To(Equal("BuildRegistrationFailed"))
+				Expect(condition.Message).To(ContainSubstring(validation.MaxLenError(63)))
+			})
+		})
+	})
 })
