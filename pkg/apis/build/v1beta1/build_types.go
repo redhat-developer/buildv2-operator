@@ -78,7 +78,10 @@ const (
 	OutputTimestampNotValid BuildReason = "OutputTimestampNotValid"
 	// NodeSelectorNotValid indicates that the nodeSelector value is not valid
 	NodeSelectorNotValid BuildReason = "NodeSelectorNotValid"
-
+	// TolerationNotValid indicates that the Toleration value is not valid
+	TolerationNotValid BuildReason = "TolerationNotValid"
+	// SchedulerNameNotValid indicates that the Scheduler name is not valid
+	SchedulerNameNotValid BuildReason = "SchedulerNameNotValid"
 	// AllValidationsSucceeded indicates a Build was successfully validated
 	AllValidationsSucceeded = "all validations succeeded"
 )
@@ -183,6 +186,16 @@ type BuildSpec struct {
 	//
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// If specified, the pod's tolerations.
+	// +optional
+	// +patchMergeKey=Key
+	// +patchStrategy=merge
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty" patchStrategy:"merge" patchMergeKey:"Key"`
+
+	// SchedulerName specifies the scheduler to be used to dispatch the Pod
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
 }
 
 // BuildVolume is a volume that will be mounted in build pod during build step

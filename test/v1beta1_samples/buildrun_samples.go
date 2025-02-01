@@ -240,6 +240,52 @@ spec:
     kubernetes.io/arch: amd64
 `
 
+// MinimalBuildRunWithToleration defines a minimal BuildRun
+// with a reference to a not existing Build,
+// and a Toleration specified
+const MinimalBuildRunWithToleration = `
+apiVersion: shipwright.io/v1beta1
+kind: BuildRun
+spec:
+  build:
+    name: foobar
+  tolerations:
+    - key: "buildrun-test-key"
+      operator: "Equal"
+      value: "buildrun-test-value"
+`
+
+// MinimalBuildRunWithSchedulerName defines a minimal BuildRun
+// with a reference to a not existing Build,
+// and a SchedulerName specified
+const MinimalBuildRunWithSchedulerName = `
+apiVersion: shipwright.io/v1beta1
+kind: BuildRun
+spec:
+  build:
+    name: foobar
+  schedulerName: "buildrun-test-schedulername"
+`
+
+// BuildRunWithSchedulerName defines a BuildRun
+// with a Build spec defined and a SchedulerName specified
+const BuildRunWithSchedulerName = `
+apiVersion: shipwright.io/v1beta1
+kind: BuildRun
+metadata:
+  name: buildrun-schedulername-test
+spec:
+  build:
+    spec:
+      strategy:
+        kind: ClusterBuildStrategy
+        name: buildah
+      output:
+        image: image-registry.openshift-image-registry.svc:5000/example/buildpacks-app
+        name: foobar
+  schedulerName: "buildrun-test-schedulername"
+`
+
 // MinimalBuildRunWithVulnerabilityScan defines a BuildRun with
 // an override for the Build Output
 const MinimalBuildRunWithVulnerabilityScan = `
