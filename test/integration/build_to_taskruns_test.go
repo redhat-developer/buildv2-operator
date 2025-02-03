@@ -246,4 +246,50 @@ var _ = Describe("Integration tests Build and TaskRun", func() {
 			})
 		})
 	})
+
+	Context("when a build with Tolerations is defined", func() {
+		BeforeEach(func() {
+			buildSample = []byte(test.MinimalBuildWithToleration)
+			buildRunSample = []byte(test.MinimalBuildRun)
+		})
+
+		Context("when the TaskRun is created", func() {
+			It("should have the Tolerations specified in the PodTemplate", func() {
+				Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				Expect(err).To(BeNil())
+				Expect(*buildObject.Status.Message).To(Equal(v1beta1.AllValidationsSucceeded))
+				Expect(*buildObject.Status.Registered).To(Equal(corev1.ConditionTrue))
+				Expect(*buildObject.Status.Reason).To(Equal(v1beta1.SucceedStatus))
+
+				Expect(tb.CreateBR(buildRunObject)).To(BeNil())
+
+				_, err = tb.GetBRTillStartTime(buildRunObject.Name)
+				Expect(err).To(BeNil())
+
+				tr, err := tb.GetTaskRunFromBuildRun(buildRunObject.Name)
+				Expect(err).To(BeNil())
+				Expect(buildObject.Spec.Tolerations[0].Key).To(Equal(tr.Spec.PodTemplate.Tolerations[0].Key))
+				Expect(buildObject.Spec.Tolerations[0].Operator).To(Equal(tr.Spec.PodTemplate.Tolerations[0].Operator))
+				Expect(buildObject.Spec.Tolerations[0].Value).To(Equal(tr.Spec.PodTemplate.Tolerations[0].Value))
+				Expect(tr.Spec.PodTemplate.Tolerations[0].TolerationSeconds).To(Equal(corev1.Toleration{}.TolerationSeconds))
+				Expect(tr.Spec.PodTemplate.Tolerations[0].Effect).To(Equal(corev1.TaintEffectNoSchedule))
+			})
+		})
+
+		Context("when the Toleration is invalid", func() {
+			It("fails the build with a proper error in Reason", func() {
+				// set Toleration Key to be invalid
+				buildObject.Spec.Tolerations[0].Key = strings.Repeat("s", 64)
+				Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				Expect(err).To(BeNil())
+
+				Expect(*buildObject.Status.Registered).To(Equal(corev1.ConditionFalse))
+				Expect(*buildObject.Status.Reason).To(Equal(v1beta1.TolerationNotValid))
+			})
+		})
+	})
 })

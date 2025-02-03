@@ -137,6 +137,16 @@ func BuildRunFields(buildRun *build.BuildRun) (string, string) {
 			return resources.BuildRunBuildFieldOverrideForbidden,
 				"cannot use 'triggers' override in the 'BuildRun', only allowed in the 'Build'"
 		}
+
+		if len(buildRun.Spec.NodeSelector) > 0 {
+			return resources.BuildRunBuildFieldOverrideForbidden,
+				"cannot use 'nodeSelector' override and 'buildSpec' simultaneously"
+		}
+
+		if len(buildRun.Spec.Tolerations) > 0 {
+			return resources.BuildRunBuildFieldOverrideForbidden,
+				"cannot use 'tolerations' override and 'buildSpec' simultaneously"
+		}
 	}
 
 	return "", ""

@@ -6,6 +6,7 @@ package e2e_test
 
 import (
 	"os"
+	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	. "github.com/onsi/ginkgo/v2"
@@ -15,6 +16,9 @@ import (
 
 	buildv1beta1 "github.com/shipwright-io/build/pkg/apis/build/v1beta1"
 	shpgit "github.com/shipwright-io/build/pkg/git"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("For a Kubernetes cluster with Tekton and build installed", func() {
@@ -706,4 +710,64 @@ var _ = Describe("For a Kubernetes cluster with Tekton and build installed", fun
 		})
 	})
 
+	Context("when tolerations are specified", Serial, func() {
+
+		BeforeEach(func() {
+			testID = generateTestID("tolerations")
+
+			// create the build definition
+			build = createBuild(
+				testBuild,
+				testID,
+				"test/data/v1beta1/build_buildah_tolerations_cr.yaml",
+			)
+
+			// Add a taint to both of the kind worker nodes
+			nodes, err := testBuild.GetNodes()
+			Expect(err).ToNot(HaveOccurred())
+			for _, node := range nodes.Items {
+				if node.Name == "kind-worker" || node.Name == "kind-worker2" {
+					taint := corev1.Taint{Key: "test-key", Value: "test-value", Effect: "NoSchedule"}
+					err := testBuild.AddNodeTaint(node.Name, &taint)
+					Expect(err).ToNot(HaveOccurred())
+				}
+			}
+		})
+
+		AfterEach(func() {
+			nodes, err := testBuild.GetNodes()
+			Expect(err).ToNot(HaveOccurred())
+			for _, node := range nodes.Items {
+				if node.Name == "kind-worker" || node.Name == "kind-worker2" {
+					err := testBuild.RemoveNodeTaints(node.Name)
+					Expect(err).ToNot(HaveOccurred())
+				}
+			}
+		})
+
+		It("successfully runs a build when it tolerates the node taint", func() {
+			buildRun, err = buildRunTestData(testBuild.Namespace, testID, "test/data/v1beta1/buildrun_buildah_tolerations_cr.yaml")
+			Expect(err).ToNot(HaveOccurred(), "Error retrieving buildrun test data")
+
+			buildRun = validateBuildRunToSucceed(testBuild, buildRun)
+		})
+
+		It("fails to schedule when the build does not tolerate the node taint", func() {
+			// set untolerated value and a low timeout since we do not expect this to be scheduled
+			build.Spec.Tolerations[0].Value = "untolerated"
+			build.Spec.Timeout = &metav1.Duration{Duration: time.Minute}
+			testBuild.UpdateBuild(build)
+
+			buildRun, err = buildRunTestData(testBuild.Namespace, testID, "test/data/v1beta1/buildrun_buildah_tolerations_cr.yaml")
+			Expect(err).ToNot(HaveOccurred(), "Error retrieving buildrun test data")
+
+			validateBuildRunToFail(testBuild, buildRun)
+			buildRun, err = testBuild.LookupBuildRun(types.NamespacedName{Name: buildRun.Name, Namespace: testBuild.Namespace})
+
+			// Pod should fail to schedule and the BuildRun should timeout.
+			Expect(buildRun.Status.GetCondition(buildv1beta1.Succeeded).Status).To(Equal(corev1.ConditionFalse))
+			Expect(buildRun.Status.GetCondition(buildv1beta1.Succeeded).Reason).To(Equal("BuildRunTimeout"))
+			Expect(buildRun.Status.GetCondition(buildv1beta1.Succeeded).Message).To(ContainSubstring("failed to finish within"))
+		})
+	})
 })

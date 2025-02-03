@@ -292,6 +292,24 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 				return reconcile.Result{}, nil
 			}
 
+			// Validate the nodeSelector
+			valid, reason, message = validate.BuildRunNodeSelector(buildRun.Spec.NodeSelector)
+			if !valid {
+				if err := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, reason); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+
+			// Validate the tolerations
+			valid, reason, message = validate.BuildRunTolerations(buildRun.Spec.Tolerations)
+			if !valid {
+				if err := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, reason); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+
 			// Create the TaskRun, this needs to be the last step in this block to be idempotent
 			generatedTaskRun, err := r.createTaskRun(ctx, svcAccount, strategy, build, buildRun)
 			if err != nil {

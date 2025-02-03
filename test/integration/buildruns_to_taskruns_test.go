@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 )
@@ -579,6 +580,56 @@ var _ = Describe("Integration tests BuildRuns and TaskRuns", func() {
 				Expect(condition.Status).To(Equal(corev1.ConditionFalse))
 				Expect(condition.Reason).To(Equal("PodCreationFailed"))
 				Expect(condition.Message).To(ContainSubstring("must be no more than 63 characters"))
+			})
+		})
+	})
+
+	Context("when a buildrun is created with a Toleration defined", func() {
+		BeforeEach(func() {
+			buildSample = []byte(test.MinimalBuild)
+			buildRunSample = []byte(test.MinimalBuildRunWithToleration)
+		})
+
+		Context("when the taskrun is created", func() {
+			It("should have the Toleration specified in the PodTemplate", func() {
+				Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				Expect(err).To(BeNil())
+
+				Expect(tb.CreateBR(buildRunObject)).To(BeNil())
+
+				br, err := tb.GetBRTillCompletion(buildRunObject.Name)
+				Expect(err).To(BeNil())
+
+				tr, err := tb.GetTaskRunFromBuildRun(buildRunObject.Name)
+				Expect(err).To(BeNil())
+				Expect(br.Spec.Tolerations[0].Key).To(Equal(tr.Spec.PodTemplate.Tolerations[0].Key))
+				Expect(br.Spec.Tolerations[0].Operator).To(Equal(tr.Spec.PodTemplate.Tolerations[0].Operator))
+				Expect(br.Spec.Tolerations[0].Value).To(Equal(tr.Spec.PodTemplate.Tolerations[0].Value))
+				Expect(tr.Spec.PodTemplate.Tolerations[0].TolerationSeconds).To(Equal(corev1.Toleration{}.TolerationSeconds))
+				Expect(tr.Spec.PodTemplate.Tolerations[0].Effect).To(Equal(corev1.TaintEffectNoSchedule))
+			})
+		})
+
+		Context("when the Toleration is invalid", func() {
+			It("fails the buildrun with a proper error in Reason", func() {
+				Expect(tb.CreateBuild(buildObject)).To(BeNil())
+
+				buildObject, err = tb.GetBuildTillValidation(buildObject.Name)
+				Expect(err).To(BeNil())
+
+				// set Toleration Key to be invalid
+				buildRunObject.Spec.Tolerations[0].Key = strings.Repeat("s", 64)
+				Expect(tb.CreateBR(buildRunObject)).To(BeNil())
+
+				br, err := tb.GetBRTillCompletion(buildRunObject.Name)
+				Expect(err).To(BeNil())
+
+				condition := br.Status.GetCondition(v1beta1.Succeeded)
+				Expect(condition.Status).To(Equal(corev1.ConditionFalse))
+				Expect(condition.Reason).To(Equal("PodCreationFailed"))
+				Expect(condition.Message).To(ContainSubstring(validation.MaxLenError(63)))
 			})
 		})
 	})

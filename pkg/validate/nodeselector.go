@@ -6,6 +6,7 @@ package validate
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -30,13 +31,26 @@ func (b *NodeSelectorRef) ValidatePath(_ context.Context) error {
 	for key, value := range b.Build.Spec.NodeSelector {
 		if errs := validation.IsQualifiedName(key); len(errs) > 0 {
 			b.Build.Status.Reason = ptr.To(build.NodeSelectorNotValid)
-			b.Build.Status.Message = ptr.To(strings.Join(errs, ", "))
+			b.Build.Status.Message = ptr.To(fmt.Sprintf("Node selector key not valid: %v", strings.Join(errs, ", ")))
 		}
 		if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
 			b.Build.Status.Reason = ptr.To(build.NodeSelectorNotValid)
-			b.Build.Status.Message = ptr.To(strings.Join(errs, ", "))
+			b.Build.Status.Message = ptr.To(fmt.Sprintf("Node selector value not valid: %v", strings.Join(errs, ", ")))
 		}
 	}
 
 	return nil
+}
+
+// BuildRunNodeSelector is used to validate nodeSelectors in the BuildRun object
+func BuildRunNodeSelector(nodeSelector map[string]string) (bool, string, string) {
+	for key, value := range nodeSelector {
+		if errs := validation.IsQualifiedName(key); len(errs) > 0 {
+			return false, string(build.NodeSelectorNotValid), fmt.Sprintf("Node selector key not valid: %v", strings.Join(errs, ", "))
+		}
+		if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
+			return false, string(build.NodeSelectorNotValid), fmt.Sprintf("Node selector value not valid: %v", strings.Join(errs, ", "))
+		}
+	}
+	return true, "", ""
 }

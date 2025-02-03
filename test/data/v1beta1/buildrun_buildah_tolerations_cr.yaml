@@ -1,0 +1,8 @@
+---
+apiVersion: shipwright.io/v1beta1
+kind: BuildRun
+metadata:
+  name: buildah-tolerations-buildrun
+spec:
+  build:
+    name: buildah-tolerations-build

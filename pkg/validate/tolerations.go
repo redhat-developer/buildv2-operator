@@ -33,7 +33,7 @@ func (b *TolerationsRef) ValidatePath(_ context.Context) error {
 		// validate Key
 		if errs := validation.IsQualifiedName(toleration.Key); errs != nil {
 			b.Build.Status.Reason = ptr.To(build.TolerationNotValid)
-			b.Build.Status.Message = ptr.To(strings.Join(errs, ", "))
+			b.Build.Status.Message = ptr.To(fmt.Sprintf("Toleration key not valid: %v", strings.Join(errs, ", ")))
 		}
 		// validate Operator
 		if !((toleration.Operator == v1.TolerationOpExists) || (toleration.Operator == v1.TolerationOpEqual)) {
@@ -43,7 +43,7 @@ func (b *TolerationsRef) ValidatePath(_ context.Context) error {
 		// validate Value
 		if errs := validation.IsValidLabelValue(toleration.Value); errs != nil {
 			b.Build.Status.Reason = ptr.To(build.TolerationNotValid)
-			b.Build.Status.Message = ptr.To(strings.Join(errs, ", "))
+			b.Build.Status.Message = ptr.To(fmt.Sprintf("Toleration value not valid: %v", strings.Join(errs, ", ")))
 		}
 		// validate Taint Effect, of which only "NoSchedule" is supported
 		if !((toleration.Effect) == "" || (toleration.Effect == v1.TaintEffectNoSchedule)) {
@@ -58,4 +58,31 @@ func (b *TolerationsRef) ValidatePath(_ context.Context) error {
 	}
 
 	return nil
+}
+
+// BuildRunTolerations is used to validate tolerations in the BuildRun object
+func BuildRunTolerations(tolerations []v1.Toleration) (bool, string, string) {
+	for _, toleration := range tolerations {
+		// validate Key
+		if errs := validation.IsQualifiedName(toleration.Key); errs != nil {
+			return false, string(build.TolerationNotValid), fmt.Sprintf("Toleration key not valid: %v", strings.Join(errs, ", "))
+		}
+		// validate Operator
+		if !((toleration.Operator == v1.TolerationOpExists) || (toleration.Operator == v1.TolerationOpEqual)) {
+			return false, string(build.TolerationNotValid), fmt.Sprintf("Toleration operator not valid. Must be one of: '%v', '%v'", v1.TolerationOpExists, v1.TolerationOpEqual)
+		}
+		// validate Value
+		if errs := validation.IsValidLabelValue(toleration.Value); errs != nil {
+			return false, string(build.TolerationNotValid), fmt.Sprintf("Toleration value not valid: %v", strings.Join(errs, ", "))
+		}
+		// validate Taint Effect, of which only "NoSchedule" is supported
+		if !((toleration.Effect) == "" || (toleration.Effect == v1.TaintEffectNoSchedule)) {
+			return false, string(build.TolerationNotValid), fmt.Sprintf("Only the '%v' toleration effect is supported.", v1.TaintEffectNoSchedule)
+		}
+		// validate TolerationSeconds, which should not be specified
+		if toleration.TolerationSeconds != nil {
+			return false, string(build.TolerationNotValid), "Specifying TolerationSeconds is not supported."
+		}
+	}
+	return true, "", ""
 }
