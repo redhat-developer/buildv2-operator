@@ -1,0 +1,17 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+kubeadmConfigPatches:
+- |
+  kind: ClusterConfiguration
+  metadata:
+    name: config
+  apiServer:
+    extraArgs:
+      enable-admission-plugins: PodSecurity
+nodes:
+- role: control-plane
+  extraPortMappings:
+    - containerPort: 32222
+      hostPort: 32222
+- role: worker
+- role: worker

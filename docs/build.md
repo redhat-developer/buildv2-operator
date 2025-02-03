@@ -40,6 +40,7 @@ A `Build` resource allows the user to define:
 - retention
 - volumes
 - nodeSelector
+- tolerations
 
 A `Build` is available within a namespace.
 
@@ -94,6 +95,8 @@ To prevent users from triggering `BuildRun`s (_execution of a Build_) that will 
 | TriggerInvalidPipeline                          | Trigger type Pipeline is invalid.                                                                                                                                                                            |
 | OutputTimestampNotSupported                     | An unsupported output timestamp setting was used.                                                                                                                                                            |
 | OutputTimestampNotValid                         | The output timestamp value is not valid.                                                                                                                                                                     |
+| NodeSelectorNotValid                            | The specified nodeSelector is not valid. |
+| TolerationNotValid                              | The specified tolerations are not valid. |
 
 ## Configuring a Build
 
@@ -125,7 +128,8 @@ The `Build` definition supports the following fields:
   - `spec.retention.ttlAfterSucceeded` - Specifies the duration for which a successful buildrun can exist.
   - `spec.retention.failedLimit` - Specifies the number of failed buildrun that can exist.
   - `spec.retention.succeededLimit` - Specifies the number of successful buildrun can exist.
-  - `spec.nodeSelector` - Specifies a selector which must match a node's labels for the build pod to be scheduled on that node.
+  - `spec.nodeSelector` - Specifies a selector which must match a node's labels for the build pod to be scheduled on that node. If nodeSelectors are specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
+  - `spec.tolerations` - Specifies the tolerations for the build pod. Only `key`, `value`, and `operator` are supported. Only `NoSchedule` taint `effect` is supported. If tolerations are specified in both a `Build` and `BuildRun`, `BuildRun` values take precedence.
 
 ### Defining the Source
 

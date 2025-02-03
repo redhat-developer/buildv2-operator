@@ -37,6 +37,8 @@ const (
 	Triggers = "triggers"
 	// NodeSelector for validating `spec.nodeSelector` entry
 	NodeSelector = "nodeselector"
+	// Tolerations for validating `spec.tolerations` entry
+	Tolerations = "tolerations"
 )
 
 const (
@@ -79,6 +81,8 @@ func NewValidation(
 		return &Trigger{build: build}, nil
 	case NodeSelector:
 		return &NodeSelectorRef{Build: build}, nil
+	case Tolerations:
+		return &TolerationsRef{Build: build}, nil
 	default:
 		return nil, fmt.Errorf("unknown validation type")
 	}
@@ -132,6 +136,16 @@ func BuildRunFields(buildRun *build.BuildRun) (string, string) {
 		if buildRun.Spec.Build.Spec.Trigger != nil {
 			return resources.BuildRunBuildFieldOverrideForbidden,
 				"cannot use 'triggers' override in the 'BuildRun', only allowed in the 'Build'"
+		}
+
+		if len(buildRun.Spec.NodeSelector) > 0 {
+			return resources.BuildRunBuildFieldOverrideForbidden,
+				"cannot use 'nodeSelector' override and 'buildSpec' simultaneously"
+		}
+
+		if len(buildRun.Spec.Tolerations) > 0 {
+			return resources.BuildRunBuildFieldOverrideForbidden,
+				"cannot use 'tolerations' override and 'buildSpec' simultaneously"
 		}
 	}
 

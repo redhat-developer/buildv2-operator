@@ -161,6 +161,7 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 						validate.NewBuildName(build),
 						validate.NewEnv(build),
 						validate.NewNodeSelector(build),
+						validate.NewTolerations(build),
 					)
 
 					// an internal/technical error during validation happened
@@ -284,6 +285,24 @@ func (r *ReconcileBuildRun) Reconcile(ctx context.Context, request reconcile.Req
 
 			// Validate the volumes
 			valid, reason, message = validate.BuildRunVolumes(strategy.GetVolumes(), buildRun.Spec.Volumes)
+			if !valid {
+				if err := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, reason); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+
+			// Validate the nodeSelector
+			valid, reason, message = validate.BuildRunNodeSelector(buildRun.Spec.NodeSelector)
+			if !valid {
+				if err := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, reason); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+
+			// Validate the tolerations
+			valid, reason, message = validate.BuildRunTolerations(buildRun.Spec.Tolerations)
 			if !valid {
 				if err := resources.UpdateConditionWithFalseStatus(ctx, r.client, buildRun, message, reason); err != nil {
 					return reconcile.Result{}, err

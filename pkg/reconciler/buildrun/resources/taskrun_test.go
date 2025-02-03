@@ -635,7 +635,7 @@ var _ = Describe("GenerateTaskrun", func() {
 
 		Context("when the build and buildrun both specify a nodeSelector", func() {
 			BeforeEach(func() {
-				build, err = ctl.LoadBuildYAML([]byte(test.MinimalBuildRunWithNodeSelector))
+				build, err = ctl.LoadBuildYAML([]byte(test.MinimalBuildWithNodeSelector))
 				Expect(err).To(BeNil())
 
 				buildRun, err = ctl.LoadBuildRunFromBytes([]byte(test.MinimalBuildRunWithNodeSelector))
@@ -652,6 +652,30 @@ var _ = Describe("GenerateTaskrun", func() {
 
 			It("should give precedence to the nodeSelector specified in the buildRun", func() {
 				Expect(got.Spec.PodTemplate.NodeSelector).To(Equal(buildRun.Spec.NodeSelector))
+			})
+		})
+
+		Context("when the build and buildrun both specify a Toleration", func() {
+			BeforeEach(func() {
+				build, err = ctl.LoadBuildYAML([]byte(test.MinimalBuildWithToleration))
+				Expect(err).To(BeNil())
+
+				buildRun, err = ctl.LoadBuildRunFromBytes([]byte(test.MinimalBuildRunWithToleration))
+				Expect(err).To(BeNil())
+
+				buildStrategy, err = ctl.LoadBuildStrategyFromBytes([]byte(test.ClusterBuildStrategyNoOp))
+				Expect(err).To(BeNil())
+			})
+
+			JustBeforeEach(func() {
+				got, err = resources.GenerateTaskRun(config.NewDefaultConfig(), build, buildRun, serviceAccountName, buildStrategy)
+				Expect(err).To(BeNil())
+			})
+
+			It("should give precedence to the Toleration values specified in the buildRun", func() {
+				Expect(got.Spec.PodTemplate.Tolerations[0].Key).To(Equal(buildRun.Spec.Tolerations[0].Key))
+				Expect(got.Spec.PodTemplate.Tolerations[0].Operator).To(Equal(buildRun.Spec.Tolerations[0].Operator))
+				Expect(got.Spec.PodTemplate.Tolerations[0].Value).To(Equal(buildRun.Spec.Tolerations[0].Value))
 			})
 		})
 	})
